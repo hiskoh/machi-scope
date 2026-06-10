@@ -384,6 +384,10 @@ with tab_visual:
             else:
                 up = comparison[comparison["前年差"] > 0].sort_values("前年差", ascending=False).head(15)
                 down = comparison[comparison["前年差"] < 0].sort_values("前年差", ascending=True).head(15)
+                if not up.empty:
+                    st.markdown(f"##### 昨年比トップワードRank")
+                    rank_df = up[["ことば", "前年差"]].set_index("ことば")
+                    st.bar_chart(rank_df)
                 c_up, c_down = st.columns(2)
                 with c_up:
                     st.markdown(f"##### {base_year}年から増えたことば")
@@ -401,8 +405,8 @@ with tab_network:
         top_k_per_record=18,
         max_nodes=55,
     )
-    render_network(graph, min_edge_weight=5, height=620, physics=True, edge_opacity=0.24)
-    st.caption("強すぎる場合は「レンズを調整」で表示する語数やつながりの強さを変えられます。")
+    render_network(graph, min_edge_weight=5, height=620, physics=False, edge_opacity=0.24)
+    st.caption("この表示では動きを止めています。動かしながら探索したい場合は「レンズを調整」を使ってください。")
 
 with tab_scope:
     st.markdown("#### 自分の見たい範囲に変える")
