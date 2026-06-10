@@ -294,6 +294,11 @@ def search_and_answer(query: str) -> dict[str, Any]:
     return {"summary": summary, "pairs": pairs}
 
 
+def is_openai_quota_error(exc: Exception) -> bool:
+    text = str(exc).lower()
+    return "insufficient_quota" in text or "exceeded your current quota" in text
+
+
 def render_pair(pair: dict[str, Any], index: int) -> None:
     st.markdown(f"#### {index}. {pair.get('summary', '関連質疑')}")
     st.caption(f"{pair.get('meeting_name', '会議名不明')} / {pair.get('source_file', '')}")
@@ -340,8 +345,14 @@ if st.button("検索する", type="primary", disabled=not query.strip()):
             st.session_state["gikai_result"] = search_and_answer(query.strip())
             st.session_state["gikai_query"] = query.strip()
         except Exception as exc:
-            st.error("検索中にエラーが発生しました。secrets、AWS権限、S3Vectorsの設定を確認してください。")
-            st.exception(exc)
+            if is_openai_quota_error(exc):
+                st.error("OpenAI APIの利用枠が不足しているため、検索できませんでした。")
+                st.info(
+                    "Streamlit Secretsに設定している `OPENAI_API_KEY` の課金設定、残高、利用上限を確認してください。"
+                )
+            else:
+                st.error("検索中にエラーが発生しました。secrets、AWS権限、S3Vectorsの設定を確認してください。")
+                st.caption(str(exc))
 
 result = st.session_state.get("gikai_result")
 if result:
