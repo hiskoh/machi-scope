@@ -88,14 +88,38 @@ def aggregate_terms(records: list[dict[str, Any]]) -> tuple[Counter[str], int]:
     return counter, utterances
 
 
-def top_terms_for_year(records: list[dict[str, Any]], year: Any, top_n: int = 12) -> pd.DataFrame:
+def year_counter(records: list[dict[str, Any]], year: Any) -> Counter[str]:
     counter: Counter[str] = Counter()
     for record in records:
         if record.get("year") != year:
             continue
         for term, count in record.get("top_terms", []) or []:
             counter[str(term)] += int(count)
-    return pd.DataFrame(counter.most_common(top_n), columns=["ことば", str(year)])
+    return counter
+
+
+def compare_year_terms(records: list[dict[str, Any]], target_year: Any, base_year: Any) -> pd.DataFrame:
+    target = year_counter(records, target_year)
+    base = year_counter(records, base_year)
+    terms = set(target) | set(base)
+    rows = []
+    for term in terms:
+        current = int(target.get(term, 0))
+        previous = int(base.get(term, 0))
+        diff = current - previous
+        if current == 0 and previous == 0:
+            continue
+        ratio = None if previous == 0 else current / previous
+        rows.append(
+            {
+                "ことば": term,
+                str(target_year): current,
+                str(base_year): previous,
+                "前年差": diff,
+                "前年比": "NEW" if previous == 0 and current > 0 else (f"{ratio:.1f}x" if ratio is not None else "-"),
+            }
+        )
+    return pd.DataFrame(rows)
 
 
 def build_network(records: list[dict[str, Any]], global_freq: Counter[str], top_k_per_record: int, max_nodes: int):
@@ -348,29 +372,37 @@ with tab_visual:
         st.dataframe(df_year_terms, use_container_width=True, hide_index=True)
 
     if len(filtered_years) >= 2:
-        with st.expander("ほかの年と比べる", expanded=False):
-            compare_years = [year for year in filtered_years if year != target_year]
-            compare_year = st.selectbox(
-                "比較する年",
-                compare_years,
-                index=len(compare_years) - 1,
-            )
-            target_df = top_terms_for_year(filtered_records, target_year, 15)
-            compare_df = top_terms_for_year(filtered_records, compare_year, 15)
-            merged = pd.merge(target_df, compare_df, on="ことば", how="outer").fillna(0)
-            merged["差分"] = merged[str(target_year)] - merged[str(compare_year)]
-            st.dataframe(merged.sort_values("差分", ascending=False), use_container_width=True, hide_index=True)
+        previous_candidates = [year for year in filtered_years if str(year) < str(target_year)]
+        default_base_year = previous_candidates[-1] if previous_candidates else filtered_years[0]
+        with st.expander("前年差を見る", expanded=True):
+            base_year_options = [year for year in filtered_years if year != target_year]
+            base_index = base_year_options.index(default_base_year) if default_base_year in base_year_options else 0
+            base_year = st.selectbox("比べる年", base_year_options, index=base_index)
+            comparison = compare_year_terms(filtered_records, target_year, base_year)
+            if comparison.empty:
+                st.info("比較できる語がありません。")
+            else:
+                up = comparison[comparison["前年差"] > 0].sort_values("前年差", ascending=False).head(15)
+                down = comparison[comparison["前年差"] < 0].sort_values("前年差", ascending=True).head(15)
+                c_up, c_down = st.columns(2)
+                with c_up:
+                    st.markdown(f"##### {base_year}年から増えたことば")
+                    st.dataframe(up, use_container_width=True, hide_index=True)
+                with c_down:
+                    st.markdown(f"##### {base_year}年から減ったことば")
+                    st.dataframe(down, use_container_width=True, hide_index=True)
 
 with tab_network:
     st.markdown("#### ことばの近さ")
+    st.caption("年のトレンドで気になった言葉が、どんな言葉と近い文脈で語られているかを見ます。")
     graph = build_network(
         filtered_records,
         freq,
-        top_k_per_record=14,
-        max_nodes=36,
+        top_k_per_record=18,
+        max_nodes=55,
     )
-    render_network(graph, min_edge_weight=8, height=540, physics=False, edge_opacity=0.18)
-    st.caption("ここでは強いつながりだけを残しています。もっと細かく見たいときは「レンズを調整」を開いてください。")
+    render_network(graph, min_edge_weight=5, height=620, physics=True, edge_opacity=0.24)
+    st.caption("強すぎる場合は「レンズを調整」で表示する語数やつながりの強さを変えられます。")
 
 with tab_scope:
     st.markdown("#### 自分の見たい範囲に変える")
