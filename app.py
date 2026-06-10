@@ -4,7 +4,7 @@ from dataclasses import dataclass
 
 import streamlit as st
 
-from ui_common import apply_base_styles, feature_card, page_hero, pill_row
+from ui_common import apply_base_styles, feature_card, page_hero, pill_row, step_row
 
 
 @dataclass(frozen=True)
@@ -94,13 +94,23 @@ st.markdown(
     """
     <div class="scope-band">
         <div class="scope-mini">
-        使い方はシンプルです。まず関心のあるテーマを選び、全体の傾向を見るか、具体的な質問を投げるかを選びます。
-        気になる答えが出たら、関連する質疑や市長発言を開き、最後に出典で原典へ戻ります。
+        このまちレンズは、検索窓にたどり着く前の「何から見ればいいかわからない」を減らすためのサイトです。
+        まず暮らしのテーマから入り、全体像と具体的な発言を行き来します。
         </div>
     </div>
     """,
     unsafe_allow_html=True,
 )
+
+step_row(
+    (
+        ("1. 暮らしから入る", "子育て、防災、交通など、身近なテーマを選びます。"),
+        ("2. 全体と具体を見る", "言葉の傾向を眺め、気になる論点を検索します。"),
+        ("3. 原典に戻る", "AI要約で終わらず、公式情報や会議録を確認します。"),
+    )
+)
+
+st.divider()
 
 left, right = st.columns([0.95, 1.55], gap="large")
 

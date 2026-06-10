@@ -194,6 +194,18 @@ page_hero(
     "議会での問いと、市が語る方向性を行き来して確認できます。",
 )
 
+st.markdown(
+    """
+    <div class="scope-band">
+        <div class="scope-mini">
+        議会検索が「どんな問いが出たか」を見る場所だとすれば、こちらは「市がどんな方向を語っているか」を見る場所です。
+        同じテーマを議会検索と市長発言検索で行き来すると、論点の立体感が出ます。
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
 missing = missing_required_secrets()
 if missing:
     st.warning("この機能を使うには、Streamlit CloudのSecrets設定が必要です。")

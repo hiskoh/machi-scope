@@ -228,6 +228,18 @@ page_hero(
     "検索する前に、まちの議論の地形をつかむためのページです。",
 )
 
+st.markdown(
+    """
+    <div class="scope-band">
+        <div class="scope-mini">
+        「何を検索すればいいかわからない」ときは、まずこのページから。
+        頻出語で大きな話題を見て、ネットワークで近いテーマを探し、気になる言葉を検索ページへ持っていくのがおすすめです。
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
 missing = missing_required_secrets()
 if missing:
     st.warning("この機能を使うには、Streamlit CloudのSecrets設定が必要です。")

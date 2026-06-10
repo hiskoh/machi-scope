@@ -16,6 +16,11 @@ def apply_base_styles() -> None:
             --scope-blue: #2f6f9f;
             --scope-gold: #9d6b22;
             --scope-paper: #fffdf8;
+            --scope-sky-soft: #eef6fb;
+        }
+        .stApp {
+            background:
+                linear-gradient(180deg, #fbfaf6 0%, #f7faf8 46%, #fbfaf6 100%);
         }
         .main .block-container {
             max-width: 1160px;
@@ -25,15 +30,19 @@ def apply_base_styles() -> None:
         h1, h2, h3, h4 { letter-spacing: 0; color: var(--scope-ink); }
         div[data-testid="stSidebar"] {
             border-right: 1px solid var(--scope-line);
+            background: rgba(255, 253, 248, .82);
         }
         .scope-hero {
             border: 1px solid var(--scope-line);
             background:
-                linear-gradient(135deg, rgba(31, 122, 104, .08), rgba(47, 111, 159, .08)),
+                radial-gradient(circle at 12% 20%, rgba(31, 122, 104, .12), transparent 26%),
+                radial-gradient(circle at 84% 0%, rgba(47, 111, 159, .11), transparent 28%),
+                linear-gradient(135deg, rgba(255, 255, 255, .96), rgba(255, 253, 248, .92)),
                 #ffffff;
             border-radius: 8px;
-            padding: 1.35rem 1.45rem;
+            padding: 1.55rem 1.6rem;
             margin-bottom: 1rem;
+            box-shadow: 0 12px 32px rgba(34, 48, 45, .07);
         }
         .scope-eyebrow {
             color: var(--scope-green);
@@ -43,7 +52,7 @@ def apply_base_styles() -> None:
         }
         .scope-hero h1 {
             margin: 0 0 .45rem;
-            font-size: 2rem;
+            font-size: 2.18rem;
             line-height: 1.25;
         }
         .scope-hero p {
@@ -58,6 +67,7 @@ def apply_base_styles() -> None:
             border-radius: 8px;
             padding: 1rem;
             margin: .65rem 0;
+            box-shadow: 0 4px 16px rgba(34, 48, 45, .045);
         }
         .scope-card h3 {
             font-size: 1.08rem;
@@ -84,6 +94,16 @@ def apply_base_styles() -> None:
             font-size: .82rem;
             margin: 0 .25rem .25rem 0;
         }
+        .scope-pill-blue {
+            display: inline-block;
+            padding: .16rem .48rem;
+            border: 1px solid #c9d9e5;
+            border-radius: 999px;
+            background: var(--scope-sky-soft);
+            color: #315d7a;
+            font-size: .82rem;
+            margin: 0 .25rem .25rem 0;
+        }
         .scope-note {
             border-left: 4px solid var(--scope-green);
             background: #fbfdfb;
@@ -98,10 +118,53 @@ def apply_base_styles() -> None:
             line-height: 1.6;
         }
         .scope-band {
-            border-top: 1px solid var(--scope-line);
-            border-bottom: 1px solid var(--scope-line);
-            padding: 1rem 0;
+            border: 1px solid var(--scope-line);
+            background: rgba(255, 255, 255, .72);
+            border-radius: 8px;
+            padding: 1rem;
             margin: 1.25rem 0;
+        }
+        .scope-steps {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: .75rem;
+        }
+        .scope-step {
+            border: 1px solid var(--scope-line);
+            background: rgba(255,255,255,.82);
+            border-radius: 8px;
+            padding: .85rem;
+        }
+        .scope-step strong {
+            color: var(--scope-ink);
+            display: block;
+            margin-bottom: .25rem;
+        }
+        .scope-step span {
+            color: var(--scope-muted);
+            font-size: .9rem;
+            line-height: 1.55;
+        }
+        div.stButton > button {
+            border-radius: 8px;
+            border: 1px solid rgba(31, 122, 104, .24);
+            background: #ffffff;
+            color: var(--scope-ink);
+            min-height: 2.55rem;
+        }
+        div.stButton > button:hover {
+            border-color: rgba(31, 122, 104, .55);
+            color: var(--scope-green);
+        }
+        div[data-testid="stMetric"] {
+            border: 1px solid var(--scope-line);
+            background: #fff;
+            border-radius: 8px;
+            padding: .85rem;
+        }
+        @media (max-width: 760px) {
+            .scope-hero h1 { font-size: 1.55rem; }
+            .scope-steps { grid-template-columns: 1fr; }
         }
         </style>
         """,
@@ -140,3 +203,11 @@ def feature_card(title: str, body: str, tags: tuple[str, ...] | list[str], note:
         """,
         unsafe_allow_html=True,
     )
+
+
+def step_row(steps: tuple[tuple[str, str], ...] | list[tuple[str, str]]) -> None:
+    step_html = "".join(
+        f'<div class="scope-step"><strong>{title}</strong><span>{body}</span></div>'
+        for title, body in steps
+    )
+    st.markdown(f'<div class="scope-steps">{step_html}</div>', unsafe_allow_html=True)

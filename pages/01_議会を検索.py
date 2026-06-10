@@ -323,6 +323,18 @@ page_hero(
     "議員が何を問い、行政がどう答えたのかを、自分の関心からたどれます。",
 )
 
+st.markdown(
+    """
+    <div class="scope-band">
+        <div class="scope-mini">
+        例: 「通学路の安全」「災害時の避難支援」「給食費」など、制度名でなく暮らしの言葉で入力できます。
+        関連する質疑が見つかったら、要約だけでなく質問と答弁の原文も開いて確認してください。
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
 missing = missing_required_secrets()
 if missing:
     st.warning("この機能を使うには、Streamlit CloudのSecrets設定が必要です。")

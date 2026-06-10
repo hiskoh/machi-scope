@@ -86,6 +86,18 @@ page_hero(
     "AIの回答や可視化は入口です。気になる論点を見つけたら、公式の会議録や市の公開情報に戻って確認できます。",
 )
 
+st.markdown(
+    """
+    <div class="scope-band">
+        <div class="scope-mini">
+        このサイトは、AIで読み始めやすくするための入口です。
+        引用したい内容や重要な判断に使う内容は、必ずこのページから公式情報へ戻って確認してください。
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
+
 st.subheader("公式情報")
 official_sources = [
     {
