@@ -168,6 +168,34 @@ def apply_base_styles() -> None:
             color: #1f4f45;
             line-height: 1.2;
         }
+        .scope-rank-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: .75rem;
+            margin: .75rem 0 1rem;
+        }
+        .scope-rank-card {
+            border: 1px solid var(--scope-line);
+            background: #fff;
+            border-radius: 8px;
+            padding: .9rem;
+            box-shadow: 0 4px 16px rgba(34, 48, 45, .045);
+        }
+        .scope-rank-card .rank {
+            color: var(--scope-green);
+            font-size: .82rem;
+            font-weight: 700;
+        }
+        .scope-rank-card strong {
+            display: block;
+            color: var(--scope-ink);
+            font-size: 1.25rem;
+            margin: .2rem 0;
+        }
+        .scope-rank-card span {
+            color: var(--scope-muted);
+            font-size: .9rem;
+        }
         .scope-steps {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -210,6 +238,7 @@ def apply_base_styles() -> None:
             .scope-hero h1 { font-size: 1.55rem; }
             .scope-steps { grid-template-columns: 1fr; }
             .scope-focus { grid-template-columns: 1fr; }
+            .scope-rank-grid { grid-template-columns: 1fr; }
         }
         </style>
         """,

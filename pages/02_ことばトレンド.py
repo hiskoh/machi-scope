@@ -122,6 +122,30 @@ def compare_year_terms(records: list[dict[str, Any]], target_year: Any, base_yea
     return pd.DataFrame(rows)
 
 
+def render_rising_cards(rows: pd.DataFrame, target_year: Any, base_year: Any) -> None:
+    if rows.empty:
+        st.info("前年差で目立つことばは見つかりませんでした。")
+        return
+
+    cards = []
+    for index, row in enumerate(rows.head(3).itertuples(index=False), start=1):
+        term = getattr(row, "ことば")
+        current = getattr(row, str(target_year))
+        previous = getattr(row, str(base_year))
+        diff = getattr(row, "前年差")
+        ratio = getattr(row, "前年比")
+        cards.append(
+            f"""
+            <section class="scope-rank-card">
+                <div class="rank">注目 {index}</div>
+                <strong>{escape(str(term))}</strong>
+                <span>{base_year}年 {int(previous):,} → {target_year}年 {int(current):,}<br>+{int(diff):,} / {ratio}</span>
+            </section>
+            """
+        )
+    st.markdown(f'<div class="scope-rank-grid">{"".join(cards)}</div>', unsafe_allow_html=True)
+
+
 def build_network(records: list[dict[str, Any]], global_freq: Counter[str], top_k_per_record: int, max_nodes: int):
     import networkx as nx
 
@@ -349,7 +373,7 @@ if not filtered_records or not freq:
     st.info("条件に一致するデータがありません。")
     st.stop()
 
-tab_visual, tab_network, tab_scope, tab_context = st.tabs(["年のトレンド", "ことばの近さ", "レンズを調整", "見方"])
+tab_visual, tab_network, tab_scope, tab_context = st.tabs(["見る", "近さを見る", "探求する", "見方"])
 
 with tab_visual:
     default_year_index = max(0, len(filtered_years) - 2) if len(filtered_years) >= 2 else 0
@@ -357,37 +381,51 @@ with tab_visual:
     year_records = [record for record in filtered_records if record.get("year") == target_year]
     year_freq, year_utterances = aggregate_terms(year_records)
 
-    st.markdown(f"#### {target_year}年のトレンド")
-    c1, c2, c3 = st.columns(3)
-    c1.metric("対象レコード", f"{len(year_records):,}")
-    c2.metric("発言数", f"{year_utterances:,}")
-    c3.metric("語彙数", f"{len(year_freq):,}")
-
     if not year_records or not year_freq:
         st.info("この年に表示できるデータがありません。")
     else:
-        render_word_cloud(year_freq, 34)
-        df_year_terms = pd.DataFrame(year_freq.most_common(20), columns=["ことば", "出現数"])
-        st.bar_chart(df_year_terms.set_index("ことば"))
-        st.dataframe(df_year_terms, use_container_width=True, hide_index=True)
-
-    if len(filtered_years) >= 2:
         previous_candidates = [year for year in filtered_years if str(year) < str(target_year)]
-        default_base_year = previous_candidates[-1] if previous_candidates else filtered_years[0]
-        with st.expander("前年差を見る", expanded=True):
+        default_base_year = previous_candidates[-1] if previous_candidates else (filtered_years[0] if filtered_years else target_year)
+        comparison = pd.DataFrame()
+        if len(filtered_years) >= 2:
             base_year_options = [year for year in filtered_years if year != target_year]
             base_index = base_year_options.index(default_base_year) if default_base_year in base_year_options else 0
             base_year = st.selectbox("比べる年", base_year_options, index=base_index)
             comparison = compare_year_terms(filtered_records, target_year, base_year)
-            if comparison.empty:
-                st.info("比較できる語がありません。")
-            else:
+
+        st.markdown(f"#### {target_year}年、目立ってきたことば")
+        if not comparison.empty:
+            rising = comparison[comparison["前年差"] > 0].sort_values("前年差", ascending=False)
+            render_rising_cards(rising, target_year, base_year)
+        else:
+            st.caption("比較対象の年を選ぶと、増えたことばが見えてきます。")
+
+        st.markdown("#### ことばの雰囲気")
+        render_word_cloud(year_freq, 30)
+
+        st.markdown(
+            """
+            <div class="scope-band">
+                <div class="scope-mini">
+                気になることばがあれば、左のスコープで立場や会議を絞るか、「近さを見る」で一緒に語られやすいことばを眺めてみてください。
+                さらに詳しく見たいときは「探求する」に表や調整項目を置いています。
+                </div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        with st.expander("数字でも見る", expanded=False):
+            c1, c2, c3 = st.columns(3)
+            c1.metric("対象レコード", f"{len(year_records):,}")
+            c2.metric("発言数", f"{year_utterances:,}")
+            c3.metric("語彙数", f"{len(year_freq):,}")
+            df_year_terms = pd.DataFrame(year_freq.most_common(20), columns=["ことば", "出現数"])
+            st.bar_chart(df_year_terms.set_index("ことば"))
+            st.dataframe(df_year_terms, use_container_width=True, hide_index=True)
+            if not comparison.empty:
                 up = comparison[comparison["前年差"] > 0].sort_values("前年差", ascending=False).head(15)
                 down = comparison[comparison["前年差"] < 0].sort_values("前年差", ascending=True).head(15)
-                if not up.empty:
-                    st.markdown(f"##### 昨年比トップワードRank")
-                    rank_df = up[["ことば", "前年差"]].set_index("ことば")
-                    st.bar_chart(rank_df)
                 c_up, c_down = st.columns(2)
                 with c_up:
                     st.markdown(f"##### {base_year}年から増えたことば")
@@ -397,8 +435,8 @@ with tab_visual:
                     st.dataframe(down, use_container_width=True, hide_index=True)
 
 with tab_network:
-    st.markdown("#### ことばの近さ")
-    st.caption("年のトレンドで気になった言葉が、どんな言葉と近い文脈で語られているかを見ます。")
+    st.markdown("#### 気になることばのまわりを見る")
+    st.caption("目立っていた言葉が、どんな言葉と近い文脈で語られているかを眺めます。")
     graph = build_network(
         filtered_records,
         freq,
@@ -406,10 +444,11 @@ with tab_network:
         max_nodes=55,
     )
     render_network(graph, min_edge_weight=5, height=620, physics=False, edge_opacity=0.24)
-    st.caption("この表示では動きを止めています。動かしながら探索したい場合は「レンズを調整」を使ってください。")
+    st.caption("この表示では動きを止めています。細かく探索したい場合は「探求する」を使ってください。")
 
 with tab_scope:
-    st.markdown("#### 自分の見たい範囲に変える")
+    st.markdown("#### 探求する")
+    st.caption("表示する語数やネットワークの細かさを変えて、自分の見たい範囲に寄せられます。")
     c1, c2, c3, c4 = st.columns(4)
     with c1:
         top_n = st.slider("ことば雲の語数", 10, 80, 35, 5)
