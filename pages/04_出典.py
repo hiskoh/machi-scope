@@ -6,6 +6,8 @@ from typing import Any
 import pandas as pd
 import streamlit as st
 
+from ui_common import page_hero
+
 
 st.set_page_config(
     page_title="出典 | まちすこーぷ",
@@ -78,8 +80,11 @@ def list_s3_sources() -> list[dict[str, Any]]:
     return rows
 
 
-st.title("出典")
-st.caption("AI要約や可視化の入口から、必要なときに原典へ戻るためのページです。")
+page_hero(
+    "出典",
+    "要約から、いつでも原典へ戻る。",
+    "AIの回答や可視化は入口です。気になる論点を見つけたら、公式の会議録や市の公開情報に戻って確認できます。",
+)
 
 st.subheader("公式情報")
 official_sources = [

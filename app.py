@@ -4,141 +4,76 @@ from dataclasses import dataclass
 
 import streamlit as st
 
+from ui_common import apply_base_styles, feature_card, page_hero, pill_row
+
 
 @dataclass(frozen=True)
-class Entry:
+class Feature:
     title: str
     page: str
     tags: tuple[str, ...]
-    summary: str
-    why_it_matters: str
-    next_action: str
+    body: str
+    note: str
+    action: str
 
 
-ENTRIES = [
-    Entry(
+FEATURES = [
+    Feature(
         title="議会を検索",
         page="01_議会を検索.py",
-        tags=("質疑", "議員", "行政の答弁"),
-        summary="気になるテーマを質問すると、関連する議会質疑を探して要約します。",
-        why_it_matters="議事録全文を読む前に、自分の関心に近い論点と質疑応答を見つけられます。",
-        next_action="具体的な質問から探す",
+        tags=("質問から探す", "議員の問い", "行政の答弁"),
+        body="気になるテーマを自然文で入力すると、関連する議会質疑を探して要約します。",
+        note="議事録を全部読む前に、自分の関心に近い質疑応答へたどり着けます。",
+        action="質問から議会を見る",
     ),
-    Entry(
+    Feature(
         title="ことばトレンド",
         page="02_ことばトレンド.py",
-        tags=("傾向", "ネットワーク", "頻出語"),
-        summary="市長発言や議会質疑に出てくる言葉を集計し、頻出語と共起ネットワークで眺めます。",
-        why_it_matters="まちで何が繰り返し語られているか、どのテーマ同士が近いかを俯瞰できます。",
-        next_action="まちの論点を俯瞰する",
+        tags=("頻出語", "共起ネットワーク", "まちの傾向"),
+        body="市長発言や議会質疑で繰り返し出てくる言葉を、ことば雲とネットワークで俯瞰します。",
+        note="検索する前に、いま何が語られているのかを広く眺められます。",
+        action="まちの論点を俯瞰する",
     ),
-    Entry(
+    Feature(
         title="市長発言を検索",
         page="03_市長発言.py",
-        tags=("市長", "方針", "未来"),
-        summary="市長の発言や記者会見などから、質問に近い内容を探して要約します。",
-        why_it_matters="市の方向性や重点施策を、暮らしのテーマから確認できます。",
-        next_action="市の方針を見る",
+        tags=("市の方針", "重点施策", "未来"),
+        body="市長発言や記者会見から、暮らしのテーマに近い発言を探して要約します。",
+        note="議会での問いと、市の方向性を行き来して確認できます。",
+        action="市の方針を見る",
     ),
-    Entry(
-        title="出典を見る",
+    Feature(
+        title="出典",
         page="04_出典.py",
-        tags=("出典", "透明性", "原典"),
-        summary="このサイトが参照しているデータや公開情報への入口をまとめます。",
-        why_it_matters="AIの要約だけで終わらず、必要なときに原典へ戻れます。",
-        next_action="根拠を確認する",
+        tags=("原典確認", "公式情報", "透明性"),
+        body="公式の会議録、市長関連情報、処理済みデータの所在を確認できます。",
+        note="AI要約を入口にしつつ、最後は原典へ戻るためのページです。",
+        action="出典を確認する",
     ),
 ]
 
+LIFE_THEMES = [
+    ("子育て", "給食、保育、放課後、教育環境"),
+    ("防災", "避難、災害情報、地域の支援体制"),
+    ("交通", "バス、移動支援、通学路、免許返納"),
+    ("地域経済", "商店街、観光、雇用、中心市街地"),
+    ("福祉", "高齢者、障がい、相談、孤立防止"),
+    ("まちづくり", "公共施設、都市計画、地域活動"),
+]
 
-def score_entry(entry: Entry, interests: set[str], query: str) -> int:
-    score = len(interests.intersection(entry.tags)) * 3
-    haystack = " ".join((entry.title, entry.summary, entry.why_it_matters, *entry.tags))
+
+def score_feature(feature: Feature, interests: set[str], query: str) -> int:
+    haystack = " ".join((feature.title, feature.body, feature.note, *feature.tags))
+    score = len(interests.intersection(feature.tags)) * 3
     if query and query in haystack:
-        score += 4
+        score += 5
     return score
 
 
-def render_styles() -> None:
-    st.markdown(
-        """
-        <style>
-        .main .block-container { max-width: 1160px; padding-top: 2rem; }
-        .hero {
-            padding: 1.35rem 1.45rem;
-            border: 1px solid rgba(31, 122, 104, .18);
-            background: #ffffff;
-            border-radius: 8px;
-        }
-        .hero-label {
-            color: #1f7a68;
-            font-size: .9rem;
-            font-weight: 700;
-            margin-bottom: .25rem;
-        }
-        .hero h1 {
-            font-size: 2.1rem;
-            line-height: 1.25;
-            margin: 0 0 .35rem;
-            color: #1f2f2b;
-            letter-spacing: 0;
-        }
-        .hero p {
-            color: #52615f;
-            margin: 0;
-            line-height: 1.75;
-        }
-        .entry-card {
-            border: 1px solid rgba(36, 48, 47, .13);
-            background: #ffffff;
-            border-radius: 8px;
-            padding: 1rem 1.05rem;
-            margin: .75rem 0;
-        }
-        .entry-card h3 {
-            font-size: 1.18rem;
-            margin: 0 0 .35rem;
-            color: #24302f;
-            letter-spacing: 0;
-        }
-        .pill {
-            display: inline-block;
-            padding: .16rem .48rem;
-            border-radius: 999px;
-            border: 1px solid #cddbd5;
-            background: #f3f8f5;
-            color: #315f53;
-            font-size: .82rem;
-            margin: 0 .25rem .25rem 0;
-        }
-        .why {
-            border-left: 4px solid #1f7a68;
-            padding-left: .75rem;
-            color: #35413f;
-            margin: .7rem 0;
-        }
-        .small-note { color: #687572; font-size: .9rem; line-height: 1.6; }
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
-def render_entry(entry: Entry) -> None:
-    tags_html = "".join(f'<span class="pill">{tag}</span>' for tag in entry.tags)
-    st.markdown(
-        f"""
-        <section class="entry-card">
-            <h3>{entry.title}</h3>
-            <div>{tags_html}</div>
-            <p>{entry.summary}</p>
-            <div class="why"><strong>自分ごとポイント</strong><br>{entry.why_it_matters}</div>
-        </section>
-        """,
-        unsafe_allow_html=True,
-    )
-    if st.button(entry.next_action, key=f"go-{entry.page}"):
-        st.switch_page(f"pages/{entry.page}")
+def render_feature(feature: Feature) -> None:
+    feature_card(feature.title, feature.body, feature.tags, feature.note)
+    if st.button(feature.action, key=f"go-{feature.page}", use_container_width=True):
+        st.switch_page(f"pages/{feature.page}")
 
 
 st.set_page_config(
@@ -147,68 +82,88 @@ st.set_page_config(
     layout="wide",
 )
 
-render_styles()
+apply_base_styles()
+page_hero(
+    "まちすこーぷ",
+    "議会と市政を、自分の暮らしから見つける。",
+    "議事録や会見録をただ検索するのではなく、子育て、防災、交通、地域経済などの関心から、"
+    "まちで話されている論点へ近づくためのサイトです。",
+)
 
 st.markdown(
     """
-    <section class="hero">
-        <div class="hero-label">まちすこーぷ</div>
-        <h1>自分のまちの議論が、関心から見えてくる。</h1>
-        <p>
-        議会や市長発言を、ただの議事録や広報として読むのではなく、
-        子育て、防災、交通、地域経済などの関心からたどるための入口です。
-        検索、傾向分析、出典確認をひとつの流れで扱えます。
-        </p>
-    </section>
+    <div class="scope-band">
+        <div class="scope-mini">
+        使い方はシンプルです。まず関心のあるテーマを選び、全体の傾向を見るか、具体的な質問を投げるかを選びます。
+        気になる答えが出たら、関連する質疑や市長発言を開き、最後に出典で原典へ戻ります。
+        </div>
+    </div>
     """,
     unsafe_allow_html=True,
 )
 
-st.divider()
-
-left, right = st.columns([1, 2], gap="large")
+left, right = st.columns([0.95, 1.55], gap="large")
 
 with left:
-    st.subheader("関心から入る")
-    all_tags = sorted({tag for entry in ENTRIES for tag in entry.tags})
-    interests = set(
-        st.multiselect(
-            "気になる切り口",
-            all_tags,
-            default=["質疑", "傾向", "出典"],
-        )
+    st.subheader("暮らしのテーマ")
+    selected_life = st.radio(
+        "入口を選ぶ",
+        [theme for theme, _ in LIFE_THEMES],
+        captions=[caption for _, caption in LIFE_THEMES],
+        label_visibility="collapsed",
     )
-    query = st.text_input("キーワード", placeholder="例: 子育て、防災、交通")
+    query = st.text_input("キーワード", placeholder="例: 通学路、避難所、バス、給食")
     st.markdown(
-        """
-        <p class="small-note">
-        旧サイトの「きいてギカイ」「きいてミライ」「ことばトレンド」「出典」を、
-        まちすこーぷの思想に合わせて再配置しています。
-        </p>
+        f"""
+        <section class="scope-card">
+            <div class="scope-kicker">いま見るなら</div>
+            <h3>{selected_life}から議論をたどる</h3>
+            <p>{dict(LIFE_THEMES)[selected_life]}に関係する言葉で、議会検索や市長発言検索を試してみてください。</p>
+            <div>{pill_row(("まず俯瞰", "気になったら検索", "最後に原典"))}</div>
+        </section>
         """,
         unsafe_allow_html=True,
     )
 
 with right:
-    st.subheader("おすすめの入口")
+    st.subheader("何をしたいですか")
+    interest_options = sorted({tag for feature in FEATURES for tag in feature.tags})
+    interests = set(
+        st.multiselect(
+            "目的",
+            interest_options,
+            default=["質問から探す", "頻出語", "原典確認"],
+        )
+    )
     ranked = sorted(
-        ENTRIES,
-        key=lambda entry: score_entry(entry, interests, query.strip()),
+        FEATURES,
+        key=lambda feature: score_feature(feature, interests, query.strip()),
         reverse=True,
     )
-    visible = [entry for entry in ranked if score_entry(entry, interests, query.strip()) > 0]
-    if not visible:
-        visible = ranked
-
-    for entry in visible:
-        render_entry(entry)
+    for feature in ranked:
+        render_feature(feature)
 
 st.divider()
-st.markdown(
-    """
-    <p class="small-note">
-    AI要約は原典の代わりではありません。気になる論点を見つけたら、必ず出典ページや各ページの原文情報に戻って確認してください。
-    </p>
-    """,
-    unsafe_allow_html=True,
-)
+
+st.subheader("まちすこーぷが大事にすること")
+cols = st.columns(3)
+with cols[0]:
+    feature_card(
+        "自分ごとにする",
+        "行政や議会の言葉を、暮らしのテーマに引き寄せて読み始められるようにします。",
+        ("暮らし", "関心", "入口"),
+    )
+with cols[1]:
+    feature_card(
+        "全体を見る",
+        "検索だけでなく、言葉の傾向やつながりから、まちの論点を俯瞰します。",
+        ("傾向", "比較", "俯瞰"),
+    )
+with cols[2]:
+    feature_card(
+        "原典へ戻る",
+        "AIの要約は入口です。気になる論点は、公式情報や会議録で確認できるようにします。",
+        ("出典", "透明性", "確認"),
+    )
+
+st.caption("AI要約は原典の代わりではありません。重要な判断や引用では、必ず公式情報を確認してください。")

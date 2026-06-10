@@ -9,6 +9,8 @@ from typing import Any
 
 import streamlit as st
 
+from ui_common import page_hero
+
 
 st.set_page_config(
     page_title="議会を検索 | まちすこーぷ",
@@ -314,8 +316,12 @@ def render_pair(pair: dict[str, Any], index: int) -> None:
             st.write(answer.get("text", ""))
 
 
-st.title("議会を検索")
-st.caption("旧「きいてギカイ」の中核機能を、まちすこーぷの1機能として戻したページです。")
+page_hero(
+    "議会を検索",
+    "気になることを、議会の問いと答弁から探す。",
+    "暮らしのなかの疑問を入力すると、関連する議会質疑を探して要約します。"
+    "議員が何を問い、行政がどう答えたのかを、自分の関心からたどれます。",
+)
 
 missing = missing_required_secrets()
 if missing:

@@ -11,6 +11,8 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
+from ui_common import page_hero
+
 
 st.set_page_config(
     page_title="ことばトレンド | まちすこーぷ",
@@ -219,8 +221,12 @@ def normalize_role(role: str) -> str:
     return aliases.get(role, role or "不明")
 
 
-st.title("ことばトレンド")
-st.caption("市長発言や議会質疑に出てくる言葉を、頻度とつながりから眺めます。")
+page_hero(
+    "ことばトレンド",
+    "まちで繰り返し語られている言葉を眺める。",
+    "市長発言や議会質疑に出てくる言葉を、頻度、ことば雲、ネットワークから俯瞰します。"
+    "検索する前に、まちの議論の地形をつかむためのページです。",
+)
 
 missing = missing_required_secrets()
 if missing:

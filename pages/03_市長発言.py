@@ -7,6 +7,8 @@ from typing import Any
 
 import streamlit as st
 
+from ui_common import page_hero
+
 
 st.set_page_config(
     page_title="市長発言 | まちすこーぷ",
@@ -185,8 +187,12 @@ def render_hit(hit: dict[str, Any], index: int) -> None:
             st.caption(source_file)
 
 
-st.title("市長発言を検索")
-st.caption("旧「きいてミライ」の中核機能です。市長発言や記者会見などを、暮らしの質問から探します。")
+page_hero(
+    "市長発言を検索",
+    "市の方針を、暮らしのテーマから探す。",
+    "市長発言や記者会見などから、質問に近い内容を探して要約します。"
+    "議会での問いと、市が語る方向性を行き来して確認できます。",
+)
 
 missing = missing_required_secrets()
 if missing:
