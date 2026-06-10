@@ -128,18 +128,18 @@ def render_rising_cards(rows: pd.DataFrame, target_year: Any, base_year: Any) ->
         return
 
     cards = []
-    for index, row in enumerate(rows.head(3).itertuples(index=False), start=1):
-        term = getattr(row, "ことば")
-        current = getattr(row, str(target_year))
-        previous = getattr(row, str(base_year))
-        diff = getattr(row, "前年差")
-        ratio = getattr(row, "前年比")
+    for index, row in enumerate(rows.head(3).to_dict("records"), start=1):
+        term = row["ことば"]
+        current = row[str(target_year)]
+        previous = row[str(base_year)]
+        diff = row["前年差"]
+        ratio = row["前年比"]
         cards.append(
             f"""
             <section class="scope-rank-card">
                 <div class="rank">注目 {index}</div>
                 <strong>{escape(str(term))}</strong>
-                <span>{base_year}年 {int(previous):,} → {target_year}年 {int(current):,}<br>+{int(diff):,} / {ratio}</span>
+                <span>{base_year} {int(previous):,} → {target_year} {int(current):,}<br>+{int(diff):,} / {ratio}</span>
             </section>
             """
         )
@@ -393,7 +393,7 @@ with tab_visual:
             base_year = st.selectbox("比べる年", base_year_options, index=base_index)
             comparison = compare_year_terms(filtered_records, target_year, base_year)
 
-        st.markdown(f"#### {target_year}年、目立ってきたことば")
+        st.markdown(f"#### {target_year}、目立ってきたことば")
         if not comparison.empty:
             rising = comparison[comparison["前年差"] > 0].sort_values("前年差", ascending=False)
             render_rising_cards(rising, target_year, base_year)
