@@ -21,4 +21,22 @@ Streamlit Community Cloudで以下を指定します。
 - Branch: `main`
 - Main file path: `app.py`
 
-この初期版は外部APIやsecretsに依存しないため、そのまま起動できます。
+トップページは外部APIやsecretsに依存しないため、そのまま起動できます。
+
+## 旧機能の復活
+
+`pages/01_議会を検索.py` に、旧「きいてギカイ」の中核だった議会質疑検索機能を戻しています。
+
+このページを動かすには、Streamlit Community CloudのSecretsに以下が必要です。
+
+```toml
+OPENAI_API_KEY = "sk-..."
+
+[AWS-KEY]
+AWS_ACCESS_KEY = "..."
+AWS_SECRET_KEY = "..."
+DATA_BUCKET_NAME = "..."
+VECTOR_INDEX_ARN_COUNCIL = "..."
+```
+
+Secretsが未設定でもトップページは動きます。議会検索ページだけ、設定案内を表示して停止します。

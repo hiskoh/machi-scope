@@ -202,7 +202,7 @@ with left:
         )
     )
     query = st.text_input("キーワード", placeholder="例: 通学路、避難所、バス")
-    st.caption("この初期版はサンプルデータで動きます。外部APIやsecretsは不要です。")
+    st.caption("トップページはサンプルデータで動きます。サイドバーの「議会を検索」から旧機能の一部を使えます。")
 
 with right:
     st.subheader("あなたに近い論点")
