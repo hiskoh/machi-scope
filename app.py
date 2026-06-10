@@ -77,14 +77,14 @@ def render_feature(feature: Feature) -> None:
 
 
 st.set_page_config(
-    page_title="まちすこーぷ",
+    page_title="このまちレンズ",
     page_icon="🔭",
     layout="wide",
 )
 
 apply_base_styles()
 page_hero(
-    "まちすこーぷ",
+    "このまちレンズ",
     "議会と市政を、自分の暮らしから見つける。",
     "議事録や会見録をただ検索するのではなく、子育て、防災、交通、地域経済などの関心から、"
     "まちで話されている論点へ近づくためのサイトです。",
@@ -145,7 +145,7 @@ with right:
 
 st.divider()
 
-st.subheader("まちすこーぷが大事にすること")
+st.subheader("このまちレンズが大事にすること")
 cols = st.columns(3)
 with cols[0]:
     feature_card(

@@ -13,7 +13,7 @@ from ui_common import page_hero
 
 
 st.set_page_config(
-    page_title="議会を検索 | まちすこーぷ",
+    page_title="議会を検索 | このまちレンズ",
     page_icon="🔎",
     layout="wide",
 )

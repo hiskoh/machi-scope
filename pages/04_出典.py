@@ -10,7 +10,7 @@ from ui_common import page_hero
 
 
 st.set_page_config(
-    page_title="出典 | まちすこーぷ",
+    page_title="出典 | このまちレンズ",
     page_icon="📚",
     layout="wide",
 )

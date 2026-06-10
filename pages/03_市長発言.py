@@ -11,7 +11,7 @@ from ui_common import page_hero
 
 
 st.set_page_config(
-    page_title="市長発言 | まちすこーぷ",
+    page_title="市長発言 | このまちレンズ",
     page_icon="🗣️",
     layout="wide",
 )

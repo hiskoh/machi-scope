@@ -15,7 +15,7 @@ from ui_common import page_hero
 
 
 st.set_page_config(
-    page_title="ことばトレンド | まちすこーぷ",
+    page_title="ことばトレンド | このまちレンズ",
     page_icon="📊",
     layout="wide",
 )

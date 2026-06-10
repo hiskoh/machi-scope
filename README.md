@@ -1,4 +1,4 @@
-# まちすこーぷ
+# このまちレンズ
 
 自分のまちの議会や市長発言で話されていることを、暮らしの関心から見つけるためのStreamlitアプリです。
 
@@ -24,7 +24,7 @@ streamlit run app.py
 
 Streamlit Community Cloudで以下を指定します。
 
-- Repository: `hiskoh/machi-scope`
+- Repository: `hiskoh/KonoMachi-Lens`
 - Branch: `main`
 - Main file path: `app.py`
 
@@ -32,7 +32,7 @@ Streamlit Community Cloudで以下を指定します。
 
 ## 旧機能の復活
 
-旧サイトの思想と主要機能を、まちすこーぷの構成に合わせて再配置しています。
+旧サイトの思想と主要機能を、このまちレンズの構成に合わせて再配置しています。
 
 このページを動かすには、Streamlit Community CloudのSecretsに以下が必要です。
 
