@@ -88,25 +88,6 @@ def aggregate_terms(records: list[dict[str, Any]]) -> tuple[Counter[str], int]:
     return counter, utterances
 
 
-def aggregate_terms_by_year(records: list[dict[str, Any]], selected_terms: list[str]) -> pd.DataFrame:
-    rows: list[dict[str, Any]] = []
-    selected = set(selected_terms)
-    for record in records:
-        year = record.get("year")
-        if not year:
-            continue
-        local = dict(record.get("top_terms", []) or [])
-        for term in selected:
-            count = int(local.get(term, 0) or 0)
-            if count:
-                rows.append({"年": str(year), "ことば": term, "出現数": count})
-
-    if not rows:
-        return pd.DataFrame(columns=["年", "ことば", "出現数"])
-    df = pd.DataFrame(rows)
-    return df.groupby(["年", "ことば"], as_index=False)["出現数"].sum().sort_values("年")
-
-
 def top_terms_for_year(records: list[dict[str, Any]], year: Any, top_n: int = 12) -> pd.DataFrame:
     counter: Counter[str] = Counter()
     for record in records:
@@ -344,39 +325,41 @@ if not filtered_records or not freq:
     st.info("条件に一致するデータがありません。")
     st.stop()
 
-tab_visual, tab_network, tab_scope, tab_context = st.tabs(["推移を見る", "ことばの近さ", "レンズを調整", "見方"])
+tab_visual, tab_network, tab_scope, tab_context = st.tabs(["年のトレンド", "ことばの近さ", "レンズを調整", "見方"])
 
 with tab_visual:
-    st.markdown("#### 年ごとの推移")
-    default_terms = [term for term, _ in freq.most_common(5)]
-    trend_terms = st.multiselect(
-        "推移を見ることば",
-        [term for term, _ in freq.most_common(80)],
-        default=default_terms,
-    )
-    trend_df = aggregate_terms_by_year(filtered_records, trend_terms)
-    if trend_df.empty:
-        st.info("推移を表示できるデータがありません。")
+    default_year_index = max(0, len(filtered_years) - 2) if len(filtered_years) >= 2 else 0
+    target_year = st.selectbox("見る年", filtered_years, index=default_year_index)
+    year_records = [record for record in filtered_records if record.get("year") == target_year]
+    year_freq, year_utterances = aggregate_terms(year_records)
+
+    st.markdown(f"#### {target_year}年のトレンド")
+    c1, c2, c3 = st.columns(3)
+    c1.metric("対象レコード", f"{len(year_records):,}")
+    c2.metric("発言数", f"{year_utterances:,}")
+    c3.metric("語彙数", f"{len(year_freq):,}")
+
+    if not year_records or not year_freq:
+        st.info("この年に表示できるデータがありません。")
     else:
-        pivot = trend_df.pivot(index="年", columns="ことば", values="出現数").fillna(0)
-        st.line_chart(pivot)
-        st.dataframe(trend_df, use_container_width=True, hide_index=True)
+        render_word_cloud(year_freq, 34)
+        df_year_terms = pd.DataFrame(year_freq.most_common(20), columns=["ことば", "出現数"])
+        st.bar_chart(df_year_terms.set_index("ことば"))
+        st.dataframe(df_year_terms, use_container_width=True, hide_index=True)
 
     if len(filtered_years) >= 2:
-        st.markdown("#### 年ごとの上位語を比べる")
-        c1, c2 = st.columns(2)
-        with c1:
-            year_left = st.selectbox("比較する年 1", filtered_years, index=max(0, len(filtered_years) - 2))
-        with c2:
-            year_right = st.selectbox("比較する年 2", filtered_years, index=len(filtered_years) - 1)
-
-        left_df = top_terms_for_year(filtered_records, year_left, 12)
-        right_df = top_terms_for_year(filtered_records, year_right, 12)
-        compare_df = pd.merge(left_df, right_df, on="ことば", how="outer").fillna(0)
-        st.dataframe(compare_df, use_container_width=True, hide_index=True)
-
-    st.markdown("#### いま目立つことば")
-    render_word_cloud(freq, 30)
+        with st.expander("ほかの年と比べる", expanded=False):
+            compare_years = [year for year in filtered_years if year != target_year]
+            compare_year = st.selectbox(
+                "比較する年",
+                compare_years,
+                index=len(compare_years) - 1,
+            )
+            target_df = top_terms_for_year(filtered_records, target_year, 15)
+            compare_df = top_terms_for_year(filtered_records, compare_year, 15)
+            merged = pd.merge(target_df, compare_df, on="ことば", how="outer").fillna(0)
+            merged["差分"] = merged[str(target_year)] - merged[str(compare_year)]
+            st.dataframe(merged.sort_values("差分", ascending=False), use_container_width=True, hide_index=True)
 
 with tab_network:
     st.markdown("#### ことばの近さ")
