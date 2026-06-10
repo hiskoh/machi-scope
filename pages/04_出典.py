@@ -9,12 +9,6 @@ import streamlit as st
 from ui_common import page_hero
 
 
-st.set_page_config(
-    page_title="出典 | このまちレンズ",
-    page_icon="📚",
-    layout="wide",
-)
-
 AWS_REGION = "us-west-2"
 DATA_PREFIXES = [
     "council_chunk_jsonl_ui/",

@@ -5,6 +5,7 @@ import io
 import itertools
 import json
 from collections import Counter
+from html import escape
 from typing import Any
 
 import pandas as pd
@@ -13,12 +14,6 @@ import streamlit.components.v1 as components
 
 from ui_common import page_hero
 
-
-st.set_page_config(
-    page_title="ことばトレンド | このまちレンズ",
-    page_icon="📊",
-    layout="wide",
-)
 
 AWS_REGION = "us-west-2"
 S3_KEY = "trending-words/mayor-and-council.jsonl.zst"
@@ -183,31 +178,12 @@ def render_word_cloud(counter: Counter[str], top_n: int) -> None:
         font_size = 0.9 + scale * 1.65
         weight = 500 + int(scale * 300)
         chips.append(
-            f"""
-            <span style="
-                display:inline-block;
-                margin:.18rem .32rem;
-                padding:.14rem .2rem;
-                color:#1f4f45;
-                font-size:{font_size:.2f}rem;
-                font-weight:{weight};
-                line-height:1.2;
-            " title="{count}回">{term}</span>
-            """
+            f'<span class="scope-word-chip" style="font-size:{font_size:.2f}rem;'
+            f'font-weight:{weight};" title="{count}回">{escape(str(term))}</span>'
         )
 
     st.markdown(
-        f"""
-        <div style="
-            border:1px solid rgba(36,48,47,.12);
-            border-radius:8px;
-            background:#fff;
-            padding:1rem;
-            margin:.5rem 0 1rem;
-        ">
-            {''.join(chips)}
-        </div>
-        """,
+        f'<div class="scope-word-cloud">{"".join(chips)}</div>',
         unsafe_allow_html=True,
     )
 
@@ -264,8 +240,9 @@ roles = sorted({normalize_role(record.get("speaker_role", "")) for record in rec
 speakers = sorted({record.get("speaker") for record in records if record.get("speaker")})
 
 with st.sidebar:
-    st.header("条件")
-    selected_roles = st.multiselect("発言者の立場", ["すべて"] + roles, default=["すべて"])
+    st.header("スコープ")
+    st.caption("見る範囲を少しずつ絞ると、まちの見え方が変わります。")
+    selected_roles = st.multiselect("どの立場の声を見る？", ["すべて"] + roles, default=["すべて"])
     selected_years = st.multiselect("年", ["すべて"] + years, default=["すべて"])
     selected_meetings = st.multiselect("会議", ["すべて"] + meetings, default=["すべて"])
     selected_speakers = st.multiselect("発言者", ["すべて"] + speakers, default=["すべて"])
@@ -295,24 +272,38 @@ if not filtered_records or not freq:
     st.info("条件に一致するデータがありません。")
     st.stop()
 
-tab_terms, tab_network, tab_context = st.tabs(["頻出語", "ことばネットワーク", "見方"])
+tab_visual, tab_scope, tab_context = st.tabs(["まず眺める", "レンズを調整", "見方"])
 
-with tab_terms:
-    top_n = st.slider("表示する語数", 10, 60, 25, 5)
+with tab_visual:
+    st.markdown("#### ことばの広がり")
+    render_word_cloud(freq, 40)
+    st.markdown("#### ことばの近さ")
+    graph = build_network(
+        filtered_records,
+        freq,
+        top_k_per_record=30,
+        max_nodes=80,
+    )
+    render_network(graph, min_edge_weight=3)
+    st.caption("大きい言葉ほどよく語られ、近い言葉ほど同じ文脈で出やすい言葉です。")
+
+with tab_scope:
+    st.markdown("#### 自分の見たい範囲に変える")
+    c1, c2, c3, c4 = st.columns(4)
+    with c1:
+        top_n = st.slider("ことば雲の語数", 10, 80, 35, 5)
+    with c2:
+        top_k_per_record = st.slider("各発言で使う上位語", 10, 80, 30, 5)
+    with c3:
+        max_nodes = st.slider("最大ノード数", 30, 160, 80, 10)
+    with c4:
+        min_edge_weight = st.slider("つながりの最小強度", 1, 30, 3, 1)
+
     top_terms = freq.most_common(top_n)
     df_terms = pd.DataFrame(top_terms, columns=["ことば", "出現数"])
     render_word_cloud(freq, top_n)
     st.bar_chart(df_terms.set_index("ことば"))
     st.dataframe(df_terms, use_container_width=True, hide_index=True)
-
-with tab_network:
-    c1, c2, c3 = st.columns(3)
-    with c1:
-        top_k_per_record = st.slider("各発言で使う上位語", 10, 80, 30, 5)
-    with c2:
-        max_nodes = st.slider("最大ノード数", 30, 160, 80, 10)
-    with c3:
-        min_edge_weight = st.slider("つながりの最小強度", 1, 30, 3, 1)
 
     graph = build_network(
         filtered_records,

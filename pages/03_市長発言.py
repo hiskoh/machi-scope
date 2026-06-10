@@ -10,12 +10,6 @@ import streamlit as st
 from ui_common import page_hero
 
 
-st.set_page_config(
-    page_title="市長発言 | このまちレンズ",
-    page_icon="🗣️",
-    layout="wide",
-)
-
 AWS_REGION = "us-west-2"
 OUTPUT_PREFIX = "mayor_chunk_jsonl/"
 GPT_MODEL = "gpt-4.1-mini"

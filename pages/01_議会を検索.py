@@ -12,12 +12,6 @@ import streamlit as st
 from ui_common import page_hero
 
 
-st.set_page_config(
-    page_title="議会を検索 | このまちレンズ",
-    page_icon="🔎",
-    layout="wide",
-)
-
 AWS_REGION = "us-west-2"
 OUTPUT_PREFIX = "council_chunk_jsonl_ui/"
 GPT_MODEL = "gpt-4.1-mini"

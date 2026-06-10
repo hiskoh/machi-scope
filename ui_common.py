@@ -124,6 +124,50 @@ def apply_base_styles() -> None:
             padding: 1rem;
             margin: 1.25rem 0;
         }
+        .scope-focus {
+            display: grid;
+            grid-template-columns: minmax(0, 1.7fr) minmax(240px, .8fr);
+            gap: 1rem;
+            align-items: stretch;
+            margin: 1rem 0 1.35rem;
+        }
+        .scope-focus-main,
+        .scope-focus-side {
+            border: 1px solid var(--scope-line);
+            background: rgba(255, 255, 255, .78);
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 4px 16px rgba(34, 48, 45, .045);
+        }
+        .scope-focus-main h2 {
+            font-size: 1.35rem;
+            margin: .15rem 0 .35rem;
+        }
+        .scope-focus-main p,
+        .scope-focus-side span {
+            color: var(--scope-muted);
+            line-height: 1.65;
+            margin: 0;
+        }
+        .scope-focus-side strong {
+            display: block;
+            margin-bottom: .35rem;
+        }
+        .scope-word-cloud {
+            border: 1px solid var(--scope-line);
+            border-radius: 8px;
+            background: #fff;
+            padding: 1rem;
+            margin: .5rem 0 1rem;
+            box-shadow: inset 0 0 0 1px rgba(255,255,255,.65);
+        }
+        .scope-word-chip {
+            display: inline-block;
+            margin: .18rem .32rem;
+            padding: .14rem .2rem;
+            color: #1f4f45;
+            line-height: 1.2;
+        }
         .scope-steps {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -165,6 +209,7 @@ def apply_base_styles() -> None:
         @media (max-width: 760px) {
             .scope-hero h1 { font-size: 1.55rem; }
             .scope-steps { grid-template-columns: 1fr; }
+            .scope-focus { grid-template-columns: 1fr; }
         }
         </style>
         """,
