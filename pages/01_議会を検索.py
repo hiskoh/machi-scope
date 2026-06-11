@@ -326,9 +326,15 @@ if missing:
     st.info("トップページと特徴ページはsecretsなしでも動きます。チャット検索にはOpenAI/AWS設定が必要です。")
     st.stop()
 
-query = st.chat_input("例: 給食費、通学路の安全、災害時の避難支援")
+with st.form("chat-search-form", clear_on_submit=False):
+    query = st.text_input(
+        "知りたいこと",
+        placeholder="例: 給食費、通学路の安全、災害時の避難支援",
+        label_visibility="collapsed",
+    )
+    submitted = st.form_submit_button("聞いてみる", type="primary", disabled=not query.strip())
 
-if query and query.strip():
+if submitted:
     search_query = query.strip()
     chat_result: dict[str, Any] = {"query": search_query, "council": None, "mayor": None}
     status_message = st.empty()
