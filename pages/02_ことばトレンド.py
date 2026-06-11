@@ -154,26 +154,21 @@ def render_rising_cards(rows: pd.DataFrame, target_year: Any, base_year: Any) ->
         st.info("前年差で目立つことばは見つかりませんでした。")
         return
 
-    columns = st.columns(3)
     for index, row in enumerate(rows.head(3).to_dict("records"), start=1):
         term = row["ことば"]
         current = row[str(target_year)]
         previous = row[str(base_year)]
         diff = row["前年差"]
         ratio = row["前年比"]
-        with columns[index - 1]:
-            card_html = (
-                '<section class="scope-rank-card">'
-                f'<div class="rank">注目 {index}</div>'
-                f"<strong>{escape(str(term))}</strong>"
-                f"<span>{base_year} {int(previous):,} → {target_year} {int(current):,}"
-                f"<br>+{int(diff):,} / {ratio}</span>"
-                "</section>"
-            )
-            st.markdown(
-                card_html,
-                unsafe_allow_html=True,
-            )
+        card_html = (
+            '<section class="scope-rank-card">'
+            f'<div class="rank">注目 {index}</div>'
+            f"<strong>{escape(str(term))}</strong>"
+            f"<span>{base_year} {int(previous):,} → {target_year} {int(current):,}"
+            f"<br>+{int(diff):,} / {ratio}</span>"
+            "</section>"
+        )
+        st.markdown(card_html, unsafe_allow_html=True)
 
 
 def render_term_bar_chart(df_terms: pd.DataFrame) -> None:
@@ -341,22 +336,9 @@ def normalize_role(role: str) -> str:
 
 
 page_hero(
-    "ことばトレンド",
-    "まちで繰り返し語られている言葉を眺める。",
-    "市長発言や議会質疑に出てくる言葉を、頻度、ことば雲、ネットワークから俯瞰します。"
-    "検索する前に、まちの議論の地形をつかむためのページです。",
-)
-
-st.markdown(
-    """
-    <div class="scope-band">
-        <div class="scope-mini">
-        「何を検索すればいいかわからない」ときは、まずこのページから。
-        頻出語で大きな話題を見て、ネットワークで近いテーマを探し、気になる言葉を検索ページへ持っていくのがおすすめです。
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
+    "見る",
+    "まちのことばを見る。",
+    "増えたことば、近くで語られることば。",
 )
 
 missing = missing_required_secrets()
@@ -384,8 +366,7 @@ speakers = sorted({record.get("speaker") for record in records if record.get("sp
 
 with st.sidebar:
     st.header("スコープ")
-    st.caption("見る範囲を少しずつ絞ると、まちの見え方が変わります。")
-    selected_roles = st.multiselect("どの立場の声を見る？", ["すべて"] + roles, default=["すべて"])
+    selected_roles = st.multiselect("立場", ["すべて"] + roles, default=["すべて"])
     role_set_for_speakers = expand_all(selected_roles, roles)
     speaker_options = sorted(
         {
@@ -414,126 +395,104 @@ filtered_records = [
 
 freq, utterances = aggregate_terms(filtered_records)
 
-metric_cols = st.columns(3)
-metric_cols[0].metric("対象レコード", f"{len(filtered_records):,}")
-metric_cols[1].metric("発言数", f"{utterances:,}")
-metric_cols[2].metric("語彙数", f"{len(freq):,}")
-
 filtered_years = sorted({record.get("year") for record in filtered_records if record.get("year")})
 
 if not filtered_records or not freq:
     st.info("条件に一致するデータがありません。")
     st.stop()
 
-tab_visual, tab_network, tab_scope, tab_context = st.tabs(["見る", "近さを見る", "探求する", "見方"])
+preferred_target_year = default_target_year(filtered_years)
+default_year_index = filtered_years.index(preferred_target_year) if preferred_target_year in filtered_years else 0
 
-with tab_visual:
-    preferred_target_year = default_target_year(filtered_years)
-    default_year_index = filtered_years.index(preferred_target_year) if preferred_target_year in filtered_years else 0
-    target_year = st.selectbox("見る年", filtered_years, index=default_year_index)
-    year_records = [record for record in filtered_records if record.get("year") == target_year]
-    year_freq, year_utterances = aggregate_terms(year_records)
+control_cols = st.columns(2)
+target_year = control_cols[0].selectbox("見る年", filtered_years, index=default_year_index)
+year_records = [record for record in filtered_records if record.get("year") == target_year]
+year_freq, year_utterances = aggregate_terms(year_records)
 
-    if not year_records or not year_freq:
-        st.info("この年に表示できるデータがありません。")
+preferred_base_year = default_base_year(filtered_years, target_year)
+base_year = None
+comparison = pd.DataFrame()
+if len(filtered_years) >= 2:
+    base_year_options = [year for year in filtered_years if year != target_year]
+    base_index = base_year_options.index(preferred_base_year) if preferred_base_year in base_year_options else 0
+    base_year = control_cols[1].selectbox("比べる年", base_year_options, index=base_index)
+    comparison = compare_year_terms(filtered_records, target_year, base_year)
+
+if not year_records or not year_freq:
+    st.info("この年に表示できるデータがありません。")
+    st.stop()
+
+base_records = [record for record in filtered_records if base_year is not None and record.get("year") == base_year]
+_, base_utterances = aggregate_terms(base_records)
+utterance_delta = year_utterances - base_utterances if base_year is not None else None
+utterance_delta_text = "比較なし" if utterance_delta is None else f"{utterance_delta:+,}"
+
+graph = build_network(
+    year_records,
+    year_freq,
+    top_k_per_record=18,
+    max_nodes=55,
+)
+
+summary_cols = st.columns(2)
+summary_cols[0].metric("発言量の変化", utterance_delta_text, f"{base_year} → {target_year}" if base_year else None)
+summary_cols[1].metric("ことばのつながり", f"{graph.number_of_edges():,}", f"{graph.number_of_nodes():,}語")
+
+visual_left, visual_right = st.columns([1, 1.25], gap="large")
+
+with visual_left:
+    st.markdown(f"### {target_year}に伸びたことば")
+    if not comparison.empty:
+        rising = comparison[comparison["前年差"] > 0].sort_values("前年差", ascending=False)
+        render_rising_cards(rising, target_year, base_year)
     else:
-        preferred_base_year = default_base_year(filtered_years, target_year)
-        comparison = pd.DataFrame()
-        if len(filtered_years) >= 2:
-            base_year_options = [year for year in filtered_years if year != target_year]
-            base_index = base_year_options.index(preferred_base_year) if preferred_base_year in base_year_options else 0
-            base_year = st.selectbox("比べる年", base_year_options, index=base_index)
-            comparison = compare_year_terms(filtered_records, target_year, base_year)
+        st.info("比較できる年がありません。")
 
-        st.markdown(f"#### {target_year}、目立ってきたことば")
-        if not comparison.empty:
-            rising = comparison[comparison["前年差"] > 0].sort_values("前年差", ascending=False)
-            render_rising_cards(rising, target_year, base_year)
-        else:
-            st.caption("比較対象の年を選ぶと、増えたことばが見えてきます。")
+    render_word_cloud(year_freq, 28)
 
-        st.markdown("#### ことばの雰囲気")
-        render_word_cloud(year_freq, 30)
+with visual_right:
+    st.markdown("### ことばの近さ")
+    render_network(graph, min_edge_weight=5, height=520, physics=False, edge_opacity=0.24)
 
-        st.markdown(
-            """
-            <div class="scope-band">
-                <div class="scope-mini">
-                気になることばがあれば、左のスコープで立場や会議を絞るか、「近さを見る」で一緒に語られやすいことばを眺めてみてください。
-                さらに詳しく見たいときは「探求する」に表や調整項目を置いています。
-                </div>
-            </div>
-            """,
-            unsafe_allow_html=True,
-        )
+with st.expander("数字でも見る", expanded=False):
+    c1, c2, c3 = st.columns(3)
+    c1.metric("対象レコード", f"{len(year_records):,}")
+    c2.metric("発言数", f"{year_utterances:,}")
+    c3.metric("語彙数", f"{len(year_freq):,}")
+    df_year_terms = pd.DataFrame(year_freq.most_common(20), columns=["ことば", "出現数"])
+    render_term_bar_chart(df_year_terms)
+    st.dataframe(df_year_terms, use_container_width=True, hide_index=True)
+    if not comparison.empty:
+        up = comparison[comparison["前年差"] > 0].sort_values("前年差", ascending=False).head(15)
+        down = comparison[comparison["前年差"] < 0].sort_values("前年差", ascending=True).head(15)
+        c_up, c_down = st.columns(2)
+        with c_up:
+            st.markdown(f"##### {base_year}から増えたことば")
+            st.dataframe(up, use_container_width=True, hide_index=True)
+        with c_down:
+            st.markdown(f"##### {base_year}から減ったことば")
+            st.dataframe(down, use_container_width=True, hide_index=True)
 
-        with st.expander("数字でも見る", expanded=False):
-            c1, c2, c3 = st.columns(3)
-            c1.metric("対象レコード", f"{len(year_records):,}")
-            c2.metric("発言数", f"{year_utterances:,}")
-            c3.metric("語彙数", f"{len(year_freq):,}")
-            df_year_terms = pd.DataFrame(year_freq.most_common(20), columns=["ことば", "出現数"])
-            render_term_bar_chart(df_year_terms)
-            st.dataframe(df_year_terms, use_container_width=True, hide_index=True)
-            if not comparison.empty:
-                up = comparison[comparison["前年差"] > 0].sort_values("前年差", ascending=False).head(15)
-                down = comparison[comparison["前年差"] < 0].sort_values("前年差", ascending=True).head(15)
-                c_up, c_down = st.columns(2)
-                with c_up:
-                    st.markdown(f"##### {base_year}年から増えたことば")
-                    st.dataframe(up, use_container_width=True, hide_index=True)
-                with c_down:
-                    st.markdown(f"##### {base_year}年から減ったことば")
-                    st.dataframe(down, use_container_width=True, hide_index=True)
-
-with tab_network:
-    st.markdown("#### 気になることばのまわりを見る")
-    st.caption("目立っていた言葉が、どんな言葉と近い文脈で語られているかを眺めます。")
-    graph = build_network(
-        filtered_records,
-        freq,
-        top_k_per_record=18,
-        max_nodes=55,
-    )
-    render_network(graph, min_edge_weight=5, height=620, physics=False, edge_opacity=0.24)
-    st.caption("この表示では動きを止めています。細かく探索したい場合は「探求する」を使ってください。")
-
-with tab_scope:
-    st.markdown("#### 探求する")
-    st.caption("表示する語数やネットワークの細かさを変えて、自分の見たい範囲に寄せられます。")
+with st.expander("スコープを調整する", expanded=False):
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        top_n = st.slider("ことば雲の語数", 10, 80, 35, 5)
+        top_n = st.slider("ことば雲", 10, 80, 35, 5)
     with c2:
-        top_k_per_record = st.slider("各発言で使う上位語", 8, 80, 18, 2)
+        top_k_per_record = st.slider("各発言の語数", 8, 80, 18, 2)
     with c3:
-        max_nodes = st.slider("最大ノード数", 20, 160, 50, 10)
+        max_nodes = st.slider("語の数", 20, 160, 50, 10)
     with c4:
-        min_edge_weight = st.slider("つながりの最小強度", 1, 40, 6, 1)
+        min_edge_weight = st.slider("つながり", 1, 40, 6, 1)
 
-    top_terms = freq.most_common(top_n)
-    df_terms = pd.DataFrame(top_terms, columns=["ことば", "出現数"])
+    scoped_terms = pd.DataFrame(freq.most_common(top_n), columns=["ことば", "出現数"])
     render_word_cloud(freq, top_n)
-    render_term_bar_chart(df_terms)
-    st.dataframe(df_terms, use_container_width=True, hide_index=True)
+    render_term_bar_chart(scoped_terms)
+    st.dataframe(scoped_terms, use_container_width=True, hide_index=True)
 
-    graph = build_network(
+    scoped_graph = build_network(
         filtered_records,
         freq,
         top_k_per_record=top_k_per_record,
         max_nodes=max_nodes,
     )
-    render_network(graph, min_edge_weight=min_edge_weight, physics=True, edge_opacity=0.22)
-
-with tab_context:
-    st.markdown(
-        """
-        このページは、議会や市長発言を一文ずつ読む前に、まちで繰り返し語られているテーマをつかむための入口です。
-
-        - 頻出語は、対象条件のなかでよく現れる言葉です。
-        - ネットワークは、同じ発言や同じまとまりに出てくる言葉同士を近づけています。
-        - 大きいノードほど出現が多く、太いつながりほど一緒に出やすい言葉です。
-
-        ここで気になった言葉は、議会検索や市長発言検索で詳しくたどれます。
-        """
-    )
+    render_network(scoped_graph, min_edge_weight=min_edge_weight, physics=True, edge_opacity=0.22)
