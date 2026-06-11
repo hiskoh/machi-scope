@@ -356,7 +356,9 @@ for index, sample in enumerate(sample_queries):
 if st.button("聞いてみる", type="primary", disabled=not query.strip()):
     search_query = query.strip()
     chat_result: dict[str, Any] = {"query": search_query, "council": None, "mayor": None}
+    status_message = st.empty()
 
+    status_message.info(f"「{search_query}」で検索しています。市長発言と議会でのやりとりを確認します。")
     with st.spinner(f"「{search_query}」で、市長発言と議会でのやりとりを探しています..."):
         try:
             chat_result["mayor"] = mayor_search.search_and_answer(search_query)
@@ -368,12 +370,14 @@ if st.button("聞いてみる", type="primary", disabled=not query.strip()):
         except Exception as exc:
             chat_result["council_error"] = exc
 
+    status_message.success(f"「{search_query}」の検索が完了しました。")
     st.session_state["chat_result"] = chat_result
 
 result = st.session_state.get("chat_result")
 if result:
     st.divider()
-    st.subheader("見つかったこと")
+    result_query = result.get("query", "")
+    st.subheader(f"「{result_query}」の検索結果" if result_query else "検索結果")
 
     council_error = result.get("council_error")
     if council_error:
