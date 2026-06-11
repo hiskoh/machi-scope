@@ -20,10 +20,11 @@ GPT_TEMPERATURE = 0.1
 EMBED_MODEL = "text-embedding-3-small"
 TOPK_CANDIDATES = 30
 TOP_N_RETURN = 10
-SIM_THRESHOLD = 0.1
-SCOPE_ALL = "全体を見る"
-SCOPE_DISCUSSION = "議論を見る"
-SCOPE_POLICY = "方針を見る"
+SIM_THRESHOLD = 0.7
+NO_RELEVANT_MESSAGE = (
+    "AI判定により、類似性が高いと思われる会話は見つけられませんでした。"
+    "気になったら、直接議事録や公式情報を見て一次情報を集めることをおすすめします。"
+)
 
 
 def secret_get(*keys: str) -> Any | None:
@@ -274,7 +275,7 @@ def search_and_answer(query: str) -> dict[str, Any]:
     pairs = build_pairs(hits)
     if not pairs:
         return {
-            "summary": "関連する質疑応答を見つけられませんでした。",
+            "summary": NO_RELEVANT_MESSAGE,
             "pairs": [],
         }
 
@@ -316,8 +317,8 @@ def render_pair(pair: dict[str, Any], index: int) -> None:
 
 page_hero(
     "チャットで聞く",
-    "知りたいことから、まちの発言をのぞく。",
-    "制度名や会議名を知らなくても大丈夫です。暮らしの言葉で聞くと、議員の質問、行政の答弁、市長発言から近い内容を探します。",
+    "まちのこと、聞いてみよう。",
+    "暮らしの言葉で聞くと、市長発言から見える方針と、議会で交わされたやりとりを並べて探します。",
 )
 
 st.markdown(
@@ -325,32 +326,14 @@ st.markdown(
     <div class="scope-band">
         <div class="scope-mini">
         例: 「通学路の安全」「災害時の避難支援」「給食費」など。まずは自分の言葉で入力してください。
-        結果は要約だけでなく、元の質問・答弁・市長発言も開いて確認できます。
+        左に市長発言から見える方針、右に議会での質問・答弁を表示します。気になる結果は原文も開いて確認できます。
         </div>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
-scope = st.radio(
-    "見る範囲",
-    [SCOPE_ALL, SCOPE_DISCUSSION, SCOPE_POLICY],
-    horizontal=True,
-    help="方針は市長発言などの方向性、議論は議員の質問と行政答弁を対象にします。",
-)
-
-scope_descriptions = {
-    SCOPE_ALL: "市の方向性と、議会での具体的なやりとりをあわせて見ます。",
-    SCOPE_DISCUSSION: "議員の質問と行政の答弁から、どんな論点が出ているかを見ます。",
-    SCOPE_POLICY: "市長発言などから、市がどんな方向を示しているかを見ます。",
-}
-st.caption(scope_descriptions[scope])
-
-missing: list[str] = []
-if scope in {SCOPE_ALL, SCOPE_DISCUSSION}:
-    missing.extend(missing_required_secrets())
-if scope in {SCOPE_ALL, SCOPE_POLICY}:
-    missing.extend(mayor_search.missing_required_secrets())
+missing: list[str] = missing_required_secrets() + mayor_search.missing_required_secrets()
 missing = sorted(set(missing))
 if missing:
     st.warning("この機能を使うには、Streamlit CloudのSecrets設定が必要です。")
@@ -374,21 +357,18 @@ for index, sample in enumerate(sample_queries):
         query = sample
 
 if st.button("聞いてみる", type="primary", disabled=not query.strip()):
-    chat_result: dict[str, Any] = {"query": query.strip(), "scope": scope, "council": None, "mayor": None}
+    chat_result: dict[str, Any] = {"query": query.strip(), "council": None, "mayor": None}
 
-    if scope in {SCOPE_ALL, SCOPE_DISCUSSION}:
-        with st.spinner("議員の質問と行政答弁を探しています..."):
-            try:
-                chat_result["council"] = search_and_answer(query.strip())
-            except Exception as exc:
-                chat_result["council_error"] = exc
+    with st.spinner("市長発言と議会でのやりとりを探しています..."):
+        try:
+            chat_result["mayor"] = mayor_search.search_and_answer(query.strip())
+        except Exception as exc:
+            chat_result["mayor_error"] = exc
 
-    if scope in {SCOPE_ALL, SCOPE_POLICY}:
-        with st.spinner("市の方針に近い発言を探しています..."):
-            try:
-                chat_result["mayor"] = mayor_search.search_and_answer(query.strip())
-            except Exception as exc:
-                chat_result["mayor_error"] = exc
+        try:
+            chat_result["council"] = search_and_answer(query.strip())
+        except Exception as exc:
+            chat_result["council_error"] = exc
 
     st.session_state["chat_result"] = chat_result
 
@@ -413,31 +393,40 @@ if result:
             st.error("方針を見る検索中にエラーが発生しました。")
             st.caption(str(mayor_error))
 
-    mayor_result = result.get("mayor")
-    if mayor_result:
-        st.markdown("### 方針を見る")
-        st.caption("市長発言など、市が示す方向性に近い内容です。")
-        st.success(mayor_result["summary"])
-        st.markdown("#### 関連する発言")
-        for index, hit in enumerate(mayor_result.get("hits", []), start=1):
-            mayor_search.render_hit(hit, index)
+    mayor_col, council_col = st.columns(2, gap="large")
 
-    council_result = result.get("council")
-    if council_result:
-        st.markdown("### 議論を見る")
-        st.caption("議員の質問と行政の答弁から、具体的な論点や確認事項をたどります。")
-        st.success(council_result["summary"])
+    with mayor_col:
+        st.markdown("### 市長・方針")
+        st.caption("市長発言などから、市がどんな方向を示しているかを見ます。")
+        mayor_result = result.get("mayor")
+        if mayor_result:
+            if mayor_result.get("hits"):
+                st.success(mayor_result["summary"])
+                st.markdown("#### 関連する発言")
+                for index, hit in enumerate(mayor_result.get("hits", []), start=1):
+                    mayor_search.render_hit(hit, index)
+            else:
+                st.info(NO_RELEVANT_MESSAGE)
 
-        st.markdown("#### 関連する議会でのやりとり")
-        pairs_by_meeting: dict[str, list[dict[str, Any]]] = defaultdict(list)
-        for pair in council_result.get("pairs", []):
-            pairs_by_meeting[pair.get("meeting_name", "会議名不明")].append(pair)
+    with council_col:
+        st.markdown("### 議会・やりとり")
+        st.caption("議員の質問と行政の答弁から、具体的な論点を見ます。")
+        council_result = result.get("council")
+        if council_result:
+            if council_result.get("pairs"):
+                st.success(council_result["summary"])
+                st.markdown("#### 関連する議会でのやりとり")
+                pairs_by_meeting: dict[str, list[dict[str, Any]]] = defaultdict(list)
+                for pair in council_result.get("pairs", []):
+                    pairs_by_meeting[pair.get("meeting_name", "会議名不明")].append(pair)
 
-        for meeting_name, pairs in pairs_by_meeting.items():
-            with st.expander(f"{meeting_name} ({len(pairs)}件)", expanded=True):
-                for index, pair in enumerate(pairs, start=1):
-                    render_pair(pair, index)
-                    st.divider()
+                for meeting_name, pairs in pairs_by_meeting.items():
+                    with st.expander(f"{meeting_name} ({len(pairs)}件)", expanded=True):
+                        for index, pair in enumerate(pairs, start=1):
+                            render_pair(pair, index)
+                            st.divider()
+            else:
+                st.info(NO_RELEVANT_MESSAGE)
 
 st.divider()
 st.caption("AIの要約は正確性を保証するものではありません。重要な判断は必ず原典を確認してください。")
