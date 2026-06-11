@@ -332,9 +332,12 @@ with st.form("chat-search-form", clear_on_submit=False):
         placeholder="例: 給食費、通学路の安全、災害時の避難支援",
         label_visibility="collapsed",
     )
-    submitted = st.form_submit_button("聞いてみる", type="primary", disabled=not query.strip())
+    submitted = st.form_submit_button("聞いてみる", type="primary")
 
-if submitted:
+if submitted and not query.strip():
+    st.warning("知りたいことを入力してください。")
+
+if submitted and query.strip():
     search_query = query.strip()
     chat_result: dict[str, Any] = {"query": search_query, "council": None, "mayor": None}
     status_message = st.empty()
