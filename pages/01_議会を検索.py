@@ -353,17 +353,13 @@ for index, sample in enumerate(sample_queries):
     if cols[index].button(sample):
         query = sample
 
-if query.strip():
-    st.caption(f"このキーワードで探します: 「{query.strip()}」")
-
 if st.button("聞いてみる", type="primary", disabled=not query.strip()):
     search_query = query.strip()
     chat_result: dict[str, Any] = {"query": search_query, "council": None, "mayor": None}
+    status_message = st.empty()
 
-    with st.status(
-        f"「{search_query}」で検索しています。市長発言と議会でのやりとりを確認します。",
-        expanded=True,
-    ) as status:
+    status_message.info(f"「{search_query}」で検索しています。市長発言と議会でのやりとりを確認します。")
+    with st.spinner("検索しています..."):
         try:
             chat_result["mayor"] = mayor_search.search_and_answer(search_query)
         except Exception as exc:
@@ -374,7 +370,7 @@ if st.button("聞いてみる", type="primary", disabled=not query.strip()):
         except Exception as exc:
             chat_result["council_error"] = exc
 
-        status.update(label=f"「{search_query}」の検索が完了しました。", state="complete", expanded=False)
+    status_message.empty()
     st.session_state["chat_result"] = chat_result
 
 result = st.session_state.get("chat_result")
