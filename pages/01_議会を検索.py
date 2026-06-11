@@ -21,6 +21,9 @@ EMBED_MODEL = "text-embedding-3-small"
 TOPK_CANDIDATES = 30
 TOP_N_RETURN = 10
 SIM_THRESHOLD = 0.1
+SCOPE_ALL = "全体を見る"
+SCOPE_DISCUSSION = "議論を見る"
+SCOPE_POLICY = "方針を見る"
 
 
 def secret_get(*keys: str) -> Any | None:
@@ -313,8 +316,8 @@ def render_pair(pair: dict[str, Any], index: int) -> None:
 
 page_hero(
     "チャットで聞く",
-    "知りたいことから、まちの議論と方針をのぞく。",
-    "制度名や会議名を知らなくても大丈夫です。暮らしの言葉で聞くと、議会での議論や市の方針に近い発言を探します。",
+    "知りたいことから、まちの発言をのぞく。",
+    "制度名や会議名を知らなくても大丈夫です。暮らしの言葉で聞くと、議員の質問、行政の答弁、市長発言から近い内容を探します。",
 )
 
 st.markdown(
@@ -322,7 +325,7 @@ st.markdown(
     <div class="scope-band">
         <div class="scope-mini">
         例: 「通学路の安全」「災害時の避難支援」「給食費」など。まずは自分の言葉で入力してください。
-        結果は要約だけでなく、元の質問・答弁・発言も開いて確認できます。
+        結果は要約だけでなく、元の質問・答弁・市長発言も開いて確認できます。
         </div>
     </div>
     """,
@@ -331,15 +334,22 @@ st.markdown(
 
 scope = st.radio(
     "見る範囲",
-    ["方針も議論も", "議論だけ", "方針だけ"],
+    [SCOPE_ALL, SCOPE_DISCUSSION, SCOPE_POLICY],
     horizontal=True,
-    help="方針編は市長発言、議論編は議会の質問・答弁を対象にします。",
+    help="方針は市長発言などの方向性、議論は議員の質問と行政答弁を対象にします。",
 )
 
+scope_descriptions = {
+    SCOPE_ALL: "市の方向性と、議会での具体的なやりとりをあわせて見ます。",
+    SCOPE_DISCUSSION: "議員の質問と行政の答弁から、どんな論点が出ているかを見ます。",
+    SCOPE_POLICY: "市長発言などから、市がどんな方向を示しているかを見ます。",
+}
+st.caption(scope_descriptions[scope])
+
 missing: list[str] = []
-if scope in {"方針も議論も", "議論だけ"}:
+if scope in {SCOPE_ALL, SCOPE_DISCUSSION}:
     missing.extend(missing_required_secrets())
-if scope in {"方針も議論も", "方針だけ"}:
+if scope in {SCOPE_ALL, SCOPE_POLICY}:
     missing.extend(mayor_search.missing_required_secrets())
 missing = sorted(set(missing))
 if missing:
@@ -350,7 +360,7 @@ if missing:
 
 query = st.text_input(
     "知りたいこと",
-    placeholder="例: 学校給食費の無償化について、どんな議論や方針がありますか",
+    placeholder="例: 学校給食費の無償化について、どんな発言や方針がありますか",
 )
 
 sample_queries = [
@@ -366,14 +376,14 @@ for index, sample in enumerate(sample_queries):
 if st.button("聞いてみる", type="primary", disabled=not query.strip()):
     chat_result: dict[str, Any] = {"query": query.strip(), "scope": scope, "council": None, "mayor": None}
 
-    if scope in {"方針も議論も", "議論だけ"}:
-        with st.spinner("議会での議論を探しています..."):
+    if scope in {SCOPE_ALL, SCOPE_DISCUSSION}:
+        with st.spinner("議員の質問と行政答弁を探しています..."):
             try:
                 chat_result["council"] = search_and_answer(query.strip())
             except Exception as exc:
                 chat_result["council_error"] = exc
 
-    if scope in {"方針も議論も", "方針だけ"}:
+    if scope in {SCOPE_ALL, SCOPE_POLICY}:
         with st.spinner("市の方針に近い発言を探しています..."):
             try:
                 chat_result["mayor"] = mayor_search.search_and_answer(query.strip())
@@ -390,22 +400,23 @@ if result:
     council_error = result.get("council_error")
     if council_error:
         if is_openai_quota_error(council_error):
-            st.error("OpenAI APIの利用枠が不足しているため、議論編を検索できませんでした。")
+            st.error("OpenAI APIの利用枠が不足しているため、議論を見る検索ができませんでした。")
         else:
-            st.error("議論編の検索中にエラーが発生しました。")
+            st.error("議論を見る検索中にエラーが発生しました。")
             st.caption(str(council_error))
 
     mayor_error = result.get("mayor_error")
     if mayor_error:
         if mayor_search.is_openai_quota_error(mayor_error):
-            st.error("OpenAI APIの利用枠が不足しているため、方針編を検索できませんでした。")
+            st.error("OpenAI APIの利用枠が不足しているため、方針を見る検索ができませんでした。")
         else:
-            st.error("方針編の検索中にエラーが発生しました。")
+            st.error("方針を見る検索中にエラーが発生しました。")
             st.caption(str(mayor_error))
 
     mayor_result = result.get("mayor")
     if mayor_result:
-        st.markdown("### 方針編")
+        st.markdown("### 方針を見る")
+        st.caption("市長発言など、市が示す方向性に近い内容です。")
         st.success(mayor_result["summary"])
         st.markdown("#### 関連する発言")
         for index, hit in enumerate(mayor_result.get("hits", []), start=1):
@@ -413,10 +424,11 @@ if result:
 
     council_result = result.get("council")
     if council_result:
-        st.markdown("### 議論編")
+        st.markdown("### 議論を見る")
+        st.caption("議員の質問と行政の答弁から、具体的な論点や確認事項をたどります。")
         st.success(council_result["summary"])
 
-        st.markdown("#### 関連する質疑")
+        st.markdown("#### 関連する議会でのやりとり")
         pairs_by_meeting: dict[str, list[dict[str, Any]]] = defaultdict(list)
         for pair in council_result.get("pairs", []):
             pairs_by_meeting[pair.get("meeting_name", "会議名不明")].append(pair)
