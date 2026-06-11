@@ -315,19 +315,7 @@ def render_pair(pair: dict[str, Any], index: int) -> None:
 page_hero(
     "チャットで聞く",
     "まちのこと、聞いてみよう。",
-    "暮らしの言葉で聞くと、市長発言から見える方針と、議会で交わされたやりとりを並べて探します。",
-)
-
-st.markdown(
-    """
-    <div class="scope-band">
-        <div class="scope-mini">
-        例: 「通学路の安全」「災害時の避難支援」「給食費」など。まずは自分の言葉で入力してください。
-        左に市長発言から見える方針、右に議会での質問・答弁を表示します。気になる結果は原文も開いて確認できます。
-        </div>
-    </div>
-    """,
-    unsafe_allow_html=True,
+    "気になることを、暮らしの言葉で入力してください。",
 )
 
 missing: list[str] = missing_required_secrets() + mayor_search.missing_required_secrets()
@@ -338,15 +326,9 @@ if missing:
     st.info("トップページと特徴ページはsecretsなしでも動きます。チャット検索にはOpenAI/AWS設定が必要です。")
     st.stop()
 
-with st.form("chat-search-form", clear_on_submit=False):
-    query = st.text_input(
-        "知りたいこと",
-        placeholder="例: ごはんに関する予算、通学路の安全、災害時の避難支援",
-    )
-    st.caption("Enterキーでも検索できます。制度名がわからなくても、暮らしの言葉で入力できます。")
-    submitted = st.form_submit_button("聞いてみる", type="primary", disabled=not query.strip())
+query = st.chat_input("例: 給食費、通学路の安全、災害時の避難支援")
 
-if submitted:
+if query and query.strip():
     search_query = query.strip()
     chat_result: dict[str, Any] = {"query": search_query, "council": None, "mayor": None}
     status_message = st.empty()
