@@ -337,8 +337,8 @@ def normalize_role(role: str) -> str:
 
 page_hero(
     "見る",
-    "まちのことばを見る。",
-    "増えたことば、近くで語られることば。",
+    "まちのこと、見てみよう。",
+    "増えたことば、つながる話題。",
 )
 
 missing = missing_required_secrets()
