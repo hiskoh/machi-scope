@@ -196,15 +196,32 @@ def render_term_bar_chart(df_terms: pd.DataFrame) -> None:
 def render_signal_cards(
     utterance_delta_text: str,
     year_label: str,
+    current_utterances: int,
+    base_utterances: int,
     edge_count: int,
     node_count: int,
 ) -> None:
+    delta = current_utterances - base_utterances
+    scale_base = max(current_utterances, base_utterances, 1)
+    delta_width = max(8, min(100, round(abs(delta) / scale_base * 100)))
+    delta_class = " is-down" if delta < 0 else ""
+    delta_label = "増" if delta >= 0 else "減"
     st.markdown(
         f"""
         <div class="scope-signal-grid">
             <section class="scope-signal-card">
                 <span>発言量の変化</span>
                 <strong>{escape(utterance_delta_text)}</strong>
+                <div class="scope-delta-row">
+                    <div class="scope-delta-track">
+                        <div class="scope-delta-fill{delta_class}" style="width:{delta_width}%"></div>
+                    </div>
+                    <div class="scope-delta-label">{delta_label}</div>
+                </div>
+                <div class="scope-delta-years">
+                    <span>比較年 {base_utterances:,}</span>
+                    <span>表示年 {current_utterances:,}</span>
+                </div>
                 <em>{escape(year_label)}</em>
             </section>
             <section class="scope-signal-card">
@@ -462,6 +479,8 @@ graph = build_network(
 render_signal_cards(
     utterance_delta_text,
     f"{base_year} → {target_year}" if base_year else "比較なし",
+    year_utterances,
+    base_utterances,
     graph.number_of_edges(),
     graph.number_of_nodes(),
 )

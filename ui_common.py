@@ -249,6 +249,42 @@ def apply_base_styles() -> None:
             font-style: normal;
             margin-top: .3rem;
         }
+        .scope-delta-row {
+            display: flex;
+            align-items: center;
+            gap: .65rem;
+            margin: .55rem 0 .35rem;
+        }
+        .scope-delta-track {
+            flex: 1;
+            height: .62rem;
+            border-radius: 999px;
+            background: #edf2ef;
+            overflow: hidden;
+            box-shadow: inset 0 0 0 1px rgba(34, 48, 45, .05);
+        }
+        .scope-delta-fill {
+            height: 100%;
+            min-width: .35rem;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #1f7a68, #2f6f9f);
+        }
+        .scope-delta-fill.is-down {
+            background: linear-gradient(90deg, #9d6b22, #d6a950);
+        }
+        .scope-delta-label {
+            color: var(--scope-muted);
+            font-size: .82rem;
+            white-space: nowrap;
+        }
+        .scope-delta-years {
+            display: flex;
+            justify-content: space-between;
+            gap: .75rem;
+            color: var(--scope-muted);
+            font-size: .82rem;
+            margin-top: .45rem;
+        }
         .scope-panel-title {
             display: flex;
             align-items: baseline;
