@@ -315,7 +315,7 @@ def render_pair(pair: dict[str, Any], index: int) -> None:
 page_hero(
     "チャットで聞く",
     "まちのこと、聞いてみよう。",
-    "気になることを、暮らしの言葉で入力してください。",
+    "知りたいことをそのまま入力してください。",
 )
 
 missing: list[str] = missing_required_secrets() + mayor_search.missing_required_secrets()
@@ -383,7 +383,7 @@ if result:
 
     with mayor_col:
         st.markdown("### 市長・方針")
-        st.caption("市長発言などから、市がどんな方向を示しているかを見ます。")
+        st.caption("市の方向性")
         mayor_result = result.get("mayor")
         if mayor_result:
             if mayor_result.get("hits"):
@@ -396,7 +396,7 @@ if result:
 
     with council_col:
         st.markdown("### 議会・やりとり")
-        st.caption("議員の質問と行政の答弁から、具体的な論点を見ます。")
+        st.caption("質問と答弁")
         council_result = result.get("council")
         if council_result:
             if council_result.get("pairs"):

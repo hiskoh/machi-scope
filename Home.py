@@ -33,18 +33,7 @@ apply_base_styles()
 page_hero(
     "このまちレンズ",
     "まちのこと、聞いてみる。見てみる。",
-    "気になるテーマを聞いたり、まちでよく語られている言葉を眺めたりできます。",
-)
-
-st.markdown(
-    """
-    <section class="scope-band">
-        <div class="scope-mini">
-        難しい資料を最初から読む前に、まずは入口を選んでみてください。
-        </div>
-    </section>
-    """,
-    unsafe_allow_html=True,
+    "気になることを聞く。まちで語られる言葉を見る。",
 )
 
 left, right = st.columns(2, gap="large")
@@ -52,7 +41,7 @@ left, right = st.columns(2, gap="large")
 with left:
     action_card(
         "聞く",
-        "気になることを入力すると、市長発言と議会でのやりとりを並べて探します。",
+        "知りたいことを入れると、市長発言と議会でのやりとりを並べて探します。",
         ("質問する", "方針", "議会"),
         "聞いてみる",
         "pages/01_議会を検索.py",
@@ -62,29 +51,10 @@ with left:
 with right:
     action_card(
         "見る",
-        "どんなキーワードが増えているか、どの言葉が近くで語られているかを眺めます。",
+        "増えている言葉や、近くで語られるテーマを眺めます。",
         ("ことば", "昨年比", "つながり"),
         "見てみる",
         "pages/02_ことばトレンド.py",
     )
-
-st.markdown(
-    """
-    <section class="scope-focus">
-        <div class="scope-focus-main">
-            <div class="scope-kicker">まずはここから</div>
-            <h2>気になる話題を、少し近くで。</h2>
-            <p>
-            子育て、防災、交通、まちづくり。気になる言葉から、まちで話されていることを見つけられます。
-            </p>
-        </div>
-        <div class="scope-focus-side">
-            <strong>おすすめ</strong>
-            <span>聞いてみる → 気になる結果を見る → 出典で確かめる</span>
-        </div>
-    </section>
-    """,
-    unsafe_allow_html=True,
-)
 
 st.caption("AI要約は原典の代わりではありません。重要な判断や引用では、必ず公式情報を確認してください。")

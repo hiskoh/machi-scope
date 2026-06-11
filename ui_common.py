@@ -33,19 +33,18 @@ def apply_base_styles() -> None:
             background: rgba(255, 253, 248, .82);
         }
         .scope-hero {
-            border: 1px solid var(--scope-line);
+            border: 0;
             background:
-                radial-gradient(circle at 12% 20%, rgba(31, 122, 104, .12), transparent 26%),
-                radial-gradient(circle at 84% 0%, rgba(47, 111, 159, .11), transparent 28%),
-                linear-gradient(135deg, rgba(255, 255, 255, .96), rgba(255, 253, 248, .92)),
-                #ffffff;
+                radial-gradient(circle at 16% 12%, rgba(255, 255, 255, .18), transparent 28%),
+                radial-gradient(circle at 90% 0%, rgba(255, 255, 255, .14), transparent 30%),
+                linear-gradient(135deg, #146857 0%, #1f7a68 48%, #2f6f9f 100%);
             border-radius: 8px;
-            padding: 1.55rem 1.6rem;
-            margin-bottom: 1rem;
-            box-shadow: 0 12px 32px rgba(34, 48, 45, .07);
+            padding: 1.7rem 1.65rem;
+            margin-bottom: 1.1rem;
+            box-shadow: 0 16px 36px rgba(31, 122, 104, .18);
         }
         .scope-eyebrow {
-            color: var(--scope-green);
+            color: rgba(255, 255, 255, .82);
             font-size: .88rem;
             font-weight: 700;
             margin-bottom: .32rem;
@@ -54,9 +53,10 @@ def apply_base_styles() -> None:
             margin: 0 0 .45rem;
             font-size: 2.18rem;
             line-height: 1.25;
+            color: #fff;
         }
         .scope-hero p {
-            color: var(--scope-muted);
+            color: rgba(255, 255, 255, .86);
             margin: 0;
             max-width: 780px;
             line-height: 1.75;
@@ -243,9 +243,19 @@ def apply_base_styles() -> None:
             color: var(--scope-ink);
             min-height: 2.55rem;
         }
+        div.stButton > button[kind="primary"],
+        div.stFormSubmitButton > button[kind="primary"] {
+            border-color: rgba(31, 122, 104, .88);
+            background: var(--scope-green);
+            color: #fff;
+        }
         div.stButton > button:hover {
             border-color: rgba(31, 122, 104, .55);
             color: var(--scope-green);
+        }
+        div.stFormSubmitButton > button {
+            border-radius: 8px;
+            min-height: 2.55rem;
         }
         div[data-testid="stMetric"] {
             border: 1px solid var(--scope-line);
