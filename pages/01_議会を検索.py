@@ -9,6 +9,7 @@ from typing import Any
 
 import streamlit as st
 
+import mayor_search
 from ui_common import page_hero
 
 
@@ -311,77 +312,120 @@ def render_pair(pair: dict[str, Any], index: int) -> None:
 
 
 page_hero(
-    "議会を検索",
-    "気になることを、議会の問いと答弁から探す。",
-    "暮らしのなかの疑問を入力すると、関連する議会質疑を探して要約します。"
-    "議員が何を問い、行政がどう答えたのかを、自分の関心からたどれます。",
+    "チャットで聞く",
+    "知りたいことから、まちの議論と方針をのぞく。",
+    "制度名や会議名を知らなくても大丈夫です。暮らしの言葉で聞くと、議会での議論や市の方針に近い発言を探します。",
 )
 
 st.markdown(
     """
     <div class="scope-band">
         <div class="scope-mini">
-        例: 「通学路の安全」「災害時の避難支援」「給食費」など、制度名でなく暮らしの言葉で入力できます。
-        関連する質疑が見つかったら、要約だけでなく質問と答弁の原文も開いて確認してください。
+        例: 「通学路の安全」「災害時の避難支援」「給食費」など。まずは自分の言葉で入力してください。
+        結果は要約だけでなく、元の質問・答弁・発言も開いて確認できます。
         </div>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
-missing = missing_required_secrets()
+scope = st.radio(
+    "見る範囲",
+    ["方針も議論も", "議論だけ", "方針だけ"],
+    horizontal=True,
+    help="方針編は市長発言、議論編は議会の質問・答弁を対象にします。",
+)
+
+missing: list[str] = []
+if scope in {"方針も議論も", "議論だけ"}:
+    missing.extend(missing_required_secrets())
+if scope in {"方針も議論も", "方針だけ"}:
+    missing.extend(mayor_search.missing_required_secrets())
+missing = sorted(set(missing))
 if missing:
     st.warning("この機能を使うには、Streamlit CloudのSecrets設定が必要です。")
     st.code("\n".join(missing), language="text")
-    st.info("トップページはsecretsなしで動きます。このページだけ、旧機能用のOpenAI/AWS設定が必要です。")
+    st.info("トップページと特徴ページはsecretsなしでも動きます。チャット検索にはOpenAI/AWS設定が必要です。")
     st.stop()
 
 query = st.text_input(
     "知りたいこと",
-    placeholder="例: 学校給食費の無償化について、どんな議論がありましたか",
+    placeholder="例: 学校給食費の無償化について、どんな議論や方針がありますか",
 )
 
 sample_queries = [
-    "公共交通の維持について、どんな議論がありましたか",
+    "公共交通の維持について知りたい",
     "災害時の避難支援について知りたい",
-    "子育て支援について議会で何が話されていますか",
+    "子育て支援について何が話されていますか",
 ]
 cols = st.columns(3)
 for index, sample in enumerate(sample_queries):
     if cols[index].button(sample):
         query = sample
 
-if st.button("検索する", type="primary", disabled=not query.strip()):
-    with st.spinner("議会質疑を探して要約しています..."):
-        try:
-            st.session_state["gikai_result"] = search_and_answer(query.strip())
-            st.session_state["gikai_query"] = query.strip()
-        except Exception as exc:
-            if is_openai_quota_error(exc):
-                st.error("OpenAI APIの利用枠が不足しているため、検索できませんでした。")
-                st.info(
-                    "Streamlit Secretsに設定している `OPENAI_API_KEY` の課金設定、残高、利用上限を確認してください。"
-                )
-            else:
-                st.error("検索中にエラーが発生しました。secrets、AWS権限、S3Vectorsの設定を確認してください。")
-                st.caption(str(exc))
+if st.button("聞いてみる", type="primary", disabled=not query.strip()):
+    chat_result: dict[str, Any] = {"query": query.strip(), "scope": scope, "council": None, "mayor": None}
 
-result = st.session_state.get("gikai_result")
+    if scope in {"方針も議論も", "議論だけ"}:
+        with st.spinner("議会での議論を探しています..."):
+            try:
+                chat_result["council"] = search_and_answer(query.strip())
+            except Exception as exc:
+                chat_result["council_error"] = exc
+
+    if scope in {"方針も議論も", "方針だけ"}:
+        with st.spinner("市の方針に近い発言を探しています..."):
+            try:
+                chat_result["mayor"] = mayor_search.search_and_answer(query.strip())
+            except Exception as exc:
+                chat_result["mayor_error"] = exc
+
+    st.session_state["chat_result"] = chat_result
+
+result = st.session_state.get("chat_result")
 if result:
     st.divider()
-    st.subheader("まとめ")
-    st.success(result["summary"])
+    st.subheader("見つかったこと")
 
-    st.subheader("関連する質疑")
-    pairs_by_meeting: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    for pair in result.get("pairs", []):
-        pairs_by_meeting[pair.get("meeting_name", "会議名不明")].append(pair)
+    council_error = result.get("council_error")
+    if council_error:
+        if is_openai_quota_error(council_error):
+            st.error("OpenAI APIの利用枠が不足しているため、議論編を検索できませんでした。")
+        else:
+            st.error("議論編の検索中にエラーが発生しました。")
+            st.caption(str(council_error))
 
-    for meeting_name, pairs in pairs_by_meeting.items():
-        with st.expander(f"{meeting_name} ({len(pairs)}件)", expanded=True):
-            for index, pair in enumerate(pairs, start=1):
-                render_pair(pair, index)
-                st.divider()
+    mayor_error = result.get("mayor_error")
+    if mayor_error:
+        if mayor_search.is_openai_quota_error(mayor_error):
+            st.error("OpenAI APIの利用枠が不足しているため、方針編を検索できませんでした。")
+        else:
+            st.error("方針編の検索中にエラーが発生しました。")
+            st.caption(str(mayor_error))
+
+    mayor_result = result.get("mayor")
+    if mayor_result:
+        st.markdown("### 方針編")
+        st.success(mayor_result["summary"])
+        st.markdown("#### 関連する発言")
+        for index, hit in enumerate(mayor_result.get("hits", []), start=1):
+            mayor_search.render_hit(hit, index)
+
+    council_result = result.get("council")
+    if council_result:
+        st.markdown("### 議論編")
+        st.success(council_result["summary"])
+
+        st.markdown("#### 関連する質疑")
+        pairs_by_meeting: dict[str, list[dict[str, Any]]] = defaultdict(list)
+        for pair in council_result.get("pairs", []):
+            pairs_by_meeting[pair.get("meeting_name", "会議名不明")].append(pair)
+
+        for meeting_name, pairs in pairs_by_meeting.items():
+            with st.expander(f"{meeting_name} ({len(pairs)}件)", expanded=True):
+                for index, pair in enumerate(pairs, start=1):
+                    render_pair(pair, index)
+                    st.divider()
 
 st.divider()
 st.caption("AIの要約は正確性を保証するものではありません。重要な判断は必ず原典を確認してください。")

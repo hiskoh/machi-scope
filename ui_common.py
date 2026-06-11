@@ -78,6 +78,25 @@ def apply_base_styles() -> None:
             line-height: 1.65;
             margin: .35rem 0;
         }
+        .scope-action-card {
+            border: 1px solid var(--scope-line);
+            background: #fff;
+            border-radius: 8px;
+            padding: 1.25rem;
+            min-height: 210px;
+            margin: .35rem 0 .65rem;
+            box-shadow: 0 10px 28px rgba(34, 48, 45, .065);
+        }
+        .scope-action-card h2 {
+            font-size: 1.55rem;
+            line-height: 1.35;
+            margin: .55rem 0 .55rem;
+        }
+        .scope-action-card p {
+            color: var(--scope-muted);
+            line-height: 1.75;
+            margin: 0;
+        }
         .scope-kicker {
             color: var(--scope-green);
             font-weight: 700;
