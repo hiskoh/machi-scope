@@ -193,6 +193,31 @@ def render_term_bar_chart(df_terms: pd.DataFrame) -> None:
         st.bar_chart(df_terms.set_index("ことば"))
 
 
+def render_signal_cards(
+    utterance_delta_text: str,
+    year_label: str,
+    edge_count: int,
+    node_count: int,
+) -> None:
+    st.markdown(
+        f"""
+        <div class="scope-signal-grid">
+            <section class="scope-signal-card">
+                <span>発言量の変化</span>
+                <strong>{escape(utterance_delta_text)}</strong>
+                <em>{escape(year_label)}</em>
+            </section>
+            <section class="scope-signal-card">
+                <span>ことばのつながり</span>
+                <strong>{edge_count:,}</strong>
+                <em>{node_count:,}語のネットワーク</em>
+            </section>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def build_network(records: list[dict[str, Any]], global_freq: Counter[str], top_k_per_record: int, max_nodes: int):
     import networkx as nx
 
@@ -434,11 +459,20 @@ graph = build_network(
     max_nodes=55,
 )
 
-summary_cols = st.columns(2)
-summary_cols[0].metric("発言量の変化", utterance_delta_text, f"{base_year} → {target_year}" if base_year else None)
-summary_cols[1].metric("ことばのつながり", f"{graph.number_of_edges():,}", f"{graph.number_of_nodes():,}語")
+render_signal_cards(
+    utterance_delta_text,
+    f"{base_year} → {target_year}" if base_year else "比較なし",
+    graph.number_of_edges(),
+    graph.number_of_nodes(),
+)
 
-visual_left, visual_right = st.columns([1, 1.25], gap="large")
+st.markdown(
+    '<div class="scope-panel-title"><h3>ことばの近さ</h3><span>近くで語られた言葉ほど、近くに集まります</span></div>',
+    unsafe_allow_html=True,
+)
+render_network(graph, min_edge_weight=5, height=560, physics=False, edge_opacity=0.24)
+
+visual_left, visual_right = st.columns([.95, 1.05], gap="large")
 
 with visual_left:
     st.markdown(f"### {target_year}に伸びたことば")
@@ -448,11 +482,9 @@ with visual_left:
     else:
         st.info("比較できる年がありません。")
 
-    render_word_cloud(year_freq, 28)
-
 with visual_right:
-    st.markdown("### ことばの近さ")
-    render_network(graph, min_edge_weight=5, height=520, physics=False, edge_opacity=0.24)
+    st.markdown("### よく出ることば")
+    render_word_cloud(year_freq, 28)
 
 with st.expander("数字でも見る", expanded=False):
     c1, c2, c3 = st.columns(3)

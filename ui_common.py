@@ -215,6 +215,55 @@ def apply_base_styles() -> None:
             color: var(--scope-muted);
             font-size: .9rem;
         }
+        .scope-signal-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: .8rem;
+            margin: .9rem 0 1rem;
+        }
+        .scope-signal-card {
+            border: 1px solid rgba(31, 122, 104, .18);
+            background:
+                radial-gradient(circle at 92% 10%, rgba(47, 111, 159, .09), transparent 30%),
+                #fff;
+            border-radius: 8px;
+            padding: 1rem;
+            box-shadow: 0 8px 24px rgba(34, 48, 45, .055);
+        }
+        .scope-signal-card span {
+            display: block;
+            color: var(--scope-muted);
+            font-size: .85rem;
+            margin-bottom: .25rem;
+        }
+        .scope-signal-card strong {
+            display: block;
+            color: var(--scope-ink);
+            font-size: 1.75rem;
+            line-height: 1.2;
+        }
+        .scope-signal-card em {
+            display: block;
+            color: var(--scope-green);
+            font-size: .86rem;
+            font-style: normal;
+            margin-top: .3rem;
+        }
+        .scope-panel-title {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: .75rem;
+            margin: 1.15rem 0 .35rem;
+        }
+        .scope-panel-title h3 {
+            margin: 0;
+            font-size: 1.25rem;
+        }
+        .scope-panel-title span {
+            color: var(--scope-muted);
+            font-size: .86rem;
+        }
         .scope-steps {
             display: grid;
             grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -268,6 +317,8 @@ def apply_base_styles() -> None:
             .scope-steps { grid-template-columns: 1fr; }
             .scope-focus { grid-template-columns: 1fr; }
             .scope-rank-grid { grid-template-columns: 1fr; }
+            .scope-signal-grid { grid-template-columns: 1fr; }
+            .scope-panel-title { display: block; }
         }
         </style>
         """,
