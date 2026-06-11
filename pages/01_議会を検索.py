@@ -10,6 +10,7 @@ from typing import Any
 import streamlit as st
 
 import mayor_search
+from search_feedback import no_relevant_message
 from ui_common import page_hero
 
 
@@ -21,10 +22,6 @@ EMBED_MODEL = "text-embedding-3-small"
 TOPK_CANDIDATES = 30
 TOP_N_RETURN = 10
 SIM_THRESHOLD = 0.6
-NO_RELEVANT_MESSAGE = (
-    "AI判定により、類似性が高いと思われる会話は見つけられませんでした。"
-    "気になったら、直接議事録や公式情報を見て一次情報を集めることをおすすめします。"
-)
 
 
 def secret_get(*keys: str) -> Any | None:
@@ -275,7 +272,7 @@ def search_and_answer(query: str) -> dict[str, Any]:
     pairs = build_pairs(hits)
     if not pairs:
         return {
-            "summary": NO_RELEVANT_MESSAGE,
+            "summary": no_relevant_message(query),
             "pairs": [],
         }
 
@@ -357,16 +354,17 @@ for index, sample in enumerate(sample_queries):
         query = sample
 
 if st.button("聞いてみる", type="primary", disabled=not query.strip()):
-    chat_result: dict[str, Any] = {"query": query.strip(), "council": None, "mayor": None}
+    search_query = query.strip()
+    chat_result: dict[str, Any] = {"query": search_query, "council": None, "mayor": None}
 
-    with st.spinner("市長発言と議会でのやりとりを探しています..."):
+    with st.spinner(f"「{search_query}」で、市長発言と議会でのやりとりを探しています..."):
         try:
-            chat_result["mayor"] = mayor_search.search_and_answer(query.strip())
+            chat_result["mayor"] = mayor_search.search_and_answer(search_query)
         except Exception as exc:
             chat_result["mayor_error"] = exc
 
         try:
-            chat_result["council"] = search_and_answer(query.strip())
+            chat_result["council"] = search_and_answer(search_query)
         except Exception as exc:
             chat_result["council_error"] = exc
 
@@ -406,7 +404,7 @@ if result:
                 for index, hit in enumerate(mayor_result.get("hits", []), start=1):
                     mayor_search.render_hit(hit, index)
             else:
-                st.info(NO_RELEVANT_MESSAGE)
+                st.info(mayor_result["summary"])
 
     with council_col:
         st.markdown("### 議会・やりとり")
@@ -426,7 +424,7 @@ if result:
                             render_pair(pair, index)
                             st.divider()
             else:
-                st.info(NO_RELEVANT_MESSAGE)
+                st.info(council_result["summary"])
 
 st.divider()
 st.caption("AIの要約は正確性を保証するものではありません。重要な判断は必ず原典を確認してください。")
