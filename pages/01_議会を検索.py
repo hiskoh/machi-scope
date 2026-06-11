@@ -20,7 +20,7 @@ GPT_TEMPERATURE = 0.1
 EMBED_MODEL = "text-embedding-3-small"
 TOPK_CANDIDATES = 30
 TOP_N_RETURN = 10
-SIM_THRESHOLD = 0.7
+SIM_THRESHOLD = 0.6
 NO_RELEVANT_MESSAGE = (
     "AI判定により、類似性が高いと思われる会話は見つけられませんでした。"
     "気になったら、直接議事録や公式情報を見て一次情報を集めることをおすすめします。"
