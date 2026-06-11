@@ -215,6 +215,83 @@ def apply_base_styles() -> None:
             color: var(--scope-muted);
             font-size: .9rem;
         }
+        .scope-rise-card {
+            border: 1.5px solid rgba(31, 122, 104, .52);
+            background:
+                radial-gradient(circle at 96% 8%, rgba(31, 122, 104, .12), transparent 34%),
+                linear-gradient(180deg, rgba(239, 248, 244, .92), #fff);
+            border-radius: 8px;
+            padding: .95rem;
+            margin: .72rem 0 .35rem;
+            box-shadow: 0 8px 22px rgba(31, 122, 104, .08);
+        }
+        .scope-rise-top {
+            display: flex;
+            justify-content: space-between;
+            gap: .5rem;
+            align-items: center;
+            margin-bottom: .3rem;
+        }
+        .scope-rise-top .rank {
+            color: var(--scope-green);
+            font-size: .82rem;
+            font-weight: 800;
+        }
+        .scope-rise-badge {
+            border: 1px solid rgba(31, 122, 104, .35);
+            background: #1f7a68;
+            color: #fff;
+            border-radius: 999px;
+            font-size: .9rem;
+            font-weight: 800;
+            line-height: 1;
+            padding: .34rem .58rem;
+            white-space: nowrap;
+        }
+        .scope-rise-word {
+            display: block;
+            color: var(--scope-ink);
+            font-size: 1.45rem;
+            line-height: 1.24;
+            margin: .16rem 0 .22rem;
+        }
+        .scope-rise-meta {
+            display: block;
+            color: var(--scope-muted);
+            font-size: .9rem;
+        }
+        .scope-rise-hint {
+            display: inline-block;
+            margin-top: .56rem;
+            color: var(--scope-green);
+            font-size: .86rem;
+            font-weight: 700;
+        }
+        .scope-detail-card {
+            border: 1px solid rgba(47, 111, 159, .2);
+            background: #fff;
+            border-radius: 8px;
+            padding: .95rem 1rem;
+            margin: .62rem 0;
+            box-shadow: 0 6px 18px rgba(34, 48, 45, .045);
+        }
+        .scope-detail-card span {
+            display: block;
+            color: var(--scope-muted);
+            font-size: .84rem;
+            margin-bottom: .2rem;
+        }
+        .scope-detail-card strong {
+            display: block;
+            color: #1f7a68;
+            font-size: 1rem;
+            margin-bottom: .35rem;
+        }
+        .scope-detail-card p {
+            color: var(--scope-ink);
+            line-height: 1.65;
+            margin: 0;
+        }
         .scope-signal-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));

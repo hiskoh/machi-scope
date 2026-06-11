@@ -149,6 +149,75 @@ def default_base_year(years: list[Any], target_year: Any) -> Any:
     return target_year
 
 
+def year_label(year: Any) -> str:
+    text = str(year)
+    return text if text.endswith("年") else f"{text}年"
+
+
+def count_term_in_record(record: dict[str, Any], term: str) -> int:
+    for record_term, count in record.get("top_terms", []) or []:
+        if str(record_term) == term:
+            return int(count or 0)
+    return 0
+
+
+def records_for_term(records: list[dict[str, Any]], term: str, limit: int = 5) -> list[dict[str, Any]]:
+    hits = []
+    for record in records:
+        count = count_term_in_record(record, term)
+        if count <= 0:
+            continue
+        enriched = dict(record)
+        enriched["_term_count"] = count
+        hits.append(enriched)
+    return sorted(hits, key=lambda item: int(item.get("_term_count", 0)), reverse=True)[:limit]
+
+
+def record_label(record: dict[str, Any]) -> str:
+    meeting = record.get("meeting_name") or record.get("meeting") or "会議"
+    speaker = record.get("speaker") or "発言者不明"
+    role = normalize_role(str(record.get("speaker_role", "")))
+    return f"{meeting} / {role} {speaker}"
+
+
+def record_excerpt(record: dict[str, Any], term: str) -> str:
+    for key in ("summary", "要旨", "text", "content", "chunk_text", "body"):
+        value = record.get(key)
+        if isinstance(value, str) and value.strip():
+            text = value.strip().replace("\n", " ")
+            return text[:280] + ("..." if len(text) > 280 else "")
+
+    related = [str(item[0]) for item in (record.get("top_terms", []) or [])[:6]]
+    related_text = "、".join(related) if related else term
+    return f"この発言群では「{term}」が目立ちます。近いことば: {related_text}"
+
+
+def render_term_details(term: str, records: list[dict[str, Any]], target_year: Any) -> None:
+    hits = records_for_term(records, term, limit=5)
+    st.markdown(
+        f'<div class="scope-panel-title"><h3>「{escape(term)}」の発言要旨</h3>'
+        f"<span>{year_label(target_year)}の発言から</span></div>",
+        unsafe_allow_html=True,
+    )
+    if not hits:
+        st.info("この条件では発言要旨を表示できませんでした。スコープを広げると見つかるかもしれません。")
+        return
+
+    for index, record in enumerate(hits, start=1):
+        label = record_label(record)
+        count = int(record.get("_term_count", 0))
+        st.markdown(
+            f"""
+            <section class="scope-detail-card">
+                <span>{index}. {escape(label)}</span>
+                <strong>{escape(term)} {count:,}回</strong>
+                <p>{escape(record_excerpt(record, term))}</p>
+            </section>
+            """,
+            unsafe_allow_html=True,
+        )
+
+
 def render_rising_cards(rows: pd.DataFrame, target_year: Any, base_year: Any) -> None:
     if rows.empty:
         st.info("前年差で目立つことばは見つかりませんでした。")
@@ -160,15 +229,22 @@ def render_rising_cards(rows: pd.DataFrame, target_year: Any, base_year: Any) ->
         previous = row[str(base_year)]
         diff = row["前年差"]
         change_rate = row["増減率"]
+        badge = "NEW" if change_rate == "NEW" else str(change_rate)
         card_html = (
-            '<section class="scope-rank-card">'
-            f'<div class="rank">注目 {index}</div>'
-            f"<strong>{escape(str(term))}</strong>"
-            f"<span>{base_year} {int(previous):,} → {target_year} {int(current):,}"
-            f"<br>+{int(diff):,} / {change_rate}</span>"
+            '<section class="scope-rise-card">'
+            '<div class="scope-rise-top">'
+            f'<span class="rank">注目 {index}</span>'
+            f'<span class="scope-rise-badge">{escape(badge)}</span>'
+            "</div>"
+            f'<strong class="scope-rise-word">{escape(str(term))}</strong>'
+            f'<span class="scope-rise-meta">{base_year} {int(previous):,} → {target_year} {int(current):,}'
+            f" / +{int(diff):,}</span>"
+            '<span class="scope-rise-hint">発言要旨へ</span>'
             "</section>"
         )
         st.markdown(card_html, unsafe_allow_html=True)
+        if st.button(f"「{term}」を見る", key=f"rising-word-{target_year}-{base_year}-{index}-{term}", use_container_width=True):
+            st.session_state["selected_rising_term"] = str(term)
 
 
 def render_term_bar_chart(df_terms: pd.DataFrame) -> None:
@@ -492,7 +568,25 @@ render_signal_cards(
     graph.number_of_nodes(),
 )
 
-network_note = f"{base_year}との変化は上のカードに表示" if base_year is not None else "表示年のことばマップ"
+visual_left, visual_right = st.columns([.95, 1.05], gap="large")
+
+with visual_left:
+    st.markdown(f"### {target_year}に伸びたことば")
+    if not comparison.empty:
+        rising = comparison[comparison["前年差"] > 0].sort_values("前年差", ascending=False)
+        render_rising_cards(rising, target_year, base_year)
+    else:
+        st.info("比較できる年がありません。")
+
+with visual_right:
+    st.markdown("### よく出ることば")
+    render_word_cloud(year_freq, 28)
+
+selected_rising_term = st.session_state.get("selected_rising_term")
+if selected_rising_term:
+    render_term_details(str(selected_rising_term), year_records, target_year)
+
+network_note = f"{base_year}と比べた変化は上のカードに表示" if base_year is not None else "表示年のことばマップ"
 st.markdown(
     f'<div class="scope-panel-title"><h3>{target_year}のことばの近さ</h3><span>{network_note}</span></div>',
     unsafe_allow_html=True,
@@ -510,20 +604,6 @@ if base_year is not None:
             max_nodes=55,
         )
         render_network(base_graph, min_edge_weight=5, height=460, physics=False, edge_opacity=0.2)
-
-visual_left, visual_right = st.columns([.95, 1.05], gap="large")
-
-with visual_left:
-    st.markdown(f"### {target_year}に伸びたことば")
-    if not comparison.empty:
-        rising = comparison[comparison["前年差"] > 0].sort_values("前年差", ascending=False)
-        render_rising_cards(rising, target_year, base_year)
-    else:
-        st.info("比較できる年がありません。")
-
-with visual_right:
-    st.markdown("### よく出ることば")
-    render_word_cloud(year_freq, 28)
 
 with st.expander("数字でも見る", expanded=False):
     c1, c2, c3 = st.columns(3)
