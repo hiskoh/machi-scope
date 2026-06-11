@@ -11,8 +11,8 @@ st.set_page_config(
 
 pages = [
     st.Page("Home.py", title="このまちレンズ", icon="🔭"),
-    st.Page("pages/01_議会を検索.py", title="チャットで聞く", icon="💬"),
-    st.Page("pages/02_ことばトレンド.py", title="特徴を知る", icon="📊"),
+    st.Page("pages/01_議会を検索.py", title="聞く", icon="💬"),
+    st.Page("pages/02_ことばトレンド.py", title="見る", icon="📊"),
     st.Page("pages/04_出典.py", title="出典", icon="📚"),
 ]
 
