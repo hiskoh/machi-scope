@@ -16,7 +16,7 @@ GPT_TEMPERATURE = 0.1
 EMBED_MODEL = "text-embedding-3-small"
 TOPK_CANDIDATES = 30
 TOP_N_RETURN = 10
-SIM_THRESHOLD = 0.6
+SIM_THRESHOLD = 0.4
 
 
 def secret_get(*keys: str) -> Any | None:

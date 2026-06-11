@@ -21,7 +21,7 @@ GPT_TEMPERATURE = 0.1
 EMBED_MODEL = "text-embedding-3-small"
 TOPK_CANDIDATES = 30
 TOP_N_RETURN = 10
-SIM_THRESHOLD = 0.6
+SIM_THRESHOLD = 0.4
 
 
 def secret_get(*keys: str) -> Any | None:
@@ -353,13 +353,17 @@ for index, sample in enumerate(sample_queries):
     if cols[index].button(sample):
         query = sample
 
+if query.strip():
+    st.caption(f"このキーワードで探します: 「{query.strip()}」")
+
 if st.button("聞いてみる", type="primary", disabled=not query.strip()):
     search_query = query.strip()
     chat_result: dict[str, Any] = {"query": search_query, "council": None, "mayor": None}
-    status_message = st.empty()
 
-    status_message.info(f"「{search_query}」で検索しています。市長発言と議会でのやりとりを確認します。")
-    with st.spinner(f"「{search_query}」で、市長発言と議会でのやりとりを探しています..."):
+    with st.status(
+        f"「{search_query}」で検索しています。市長発言と議会でのやりとりを確認します。",
+        expanded=True,
+    ) as status:
         try:
             chat_result["mayor"] = mayor_search.search_and_answer(search_query)
         except Exception as exc:
@@ -370,7 +374,7 @@ if st.button("聞いてみる", type="primary", disabled=not query.strip()):
         except Exception as exc:
             chat_result["council_error"] = exc
 
-    status_message.success(f"「{search_query}」の検索が完了しました。")
+        status.update(label=f"「{search_query}」の検索が完了しました。", state="complete", expanded=False)
     st.session_state["chat_result"] = chat_result
 
 result = st.session_state.get("chat_result")
