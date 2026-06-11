@@ -109,14 +109,14 @@ def compare_year_terms(records: list[dict[str, Any]], target_year: Any, base_yea
         diff = current - previous
         if current == 0 and previous == 0:
             continue
-        ratio = None if previous == 0 else current / previous
+        change_rate = None if previous == 0 else (current - previous) / previous * 100
         rows.append(
             {
                 "ことば": term,
                 str(target_year): current,
                 str(base_year): previous,
                 "前年差": diff,
-                "前年比": "NEW" if previous == 0 and current > 0 else (f"{ratio:.1f}x" if ratio is not None else "-"),
+                "増減率": "NEW" if previous == 0 and current > 0 else (f"{change_rate:+.0f}%" if change_rate is not None else "-"),
             }
         )
     return pd.DataFrame(rows)
@@ -159,13 +159,13 @@ def render_rising_cards(rows: pd.DataFrame, target_year: Any, base_year: Any) ->
         current = row[str(target_year)]
         previous = row[str(base_year)]
         diff = row["前年差"]
-        ratio = row["前年比"]
+        change_rate = row["増減率"]
         card_html = (
             '<section class="scope-rank-card">'
             f'<div class="rank">注目 {index}</div>'
             f"<strong>{escape(str(term))}</strong>"
             f"<span>{base_year} {int(previous):,} → {target_year} {int(current):,}"
-            f"<br>+{int(diff):,} / {ratio}</span>"
+            f"<br>+{int(diff):,} / {change_rate}</span>"
             "</section>"
         )
         st.markdown(card_html, unsafe_allow_html=True)
@@ -446,19 +446,26 @@ if not filtered_records or not freq:
 preferred_target_year = default_target_year(filtered_years)
 default_year_index = filtered_years.index(preferred_target_year) if preferred_target_year in filtered_years else 0
 
-control_cols = st.columns(2)
-target_year = control_cols[0].selectbox("見る年", filtered_years, index=default_year_index)
-year_records = [record for record in filtered_records if record.get("year") == target_year]
-year_freq, year_utterances = aggregate_terms(year_records)
+target_year = preferred_target_year
 
 preferred_base_year = default_base_year(filtered_years, target_year)
 base_year = None
-comparison = pd.DataFrame()
 if len(filtered_years) >= 2:
     base_year_options = [year for year in filtered_years if year != target_year]
-    base_index = base_year_options.index(preferred_base_year) if preferred_base_year in base_year_options else 0
-    base_year = control_cols[1].selectbox("比べる年", base_year_options, index=base_index)
-    comparison = compare_year_terms(filtered_records, target_year, base_year)
+    base_year = preferred_base_year if preferred_base_year in base_year_options else base_year_options[0]
+
+with st.expander("比べる年を変える", expanded=False):
+    control_cols = st.columns(2)
+    target_year = control_cols[0].selectbox("見る年", filtered_years, index=default_year_index)
+    base_year_options = [year for year in filtered_years if year != target_year]
+    if base_year_options:
+        preferred_base_year = default_base_year(filtered_years, target_year)
+        base_index = base_year_options.index(preferred_base_year) if preferred_base_year in base_year_options else 0
+        base_year = control_cols[1].selectbox("比べる年", base_year_options, index=base_index)
+
+year_records = [record for record in filtered_records if record.get("year") == target_year]
+year_freq, year_utterances = aggregate_terms(year_records)
+comparison = compare_year_terms(filtered_records, target_year, base_year) if base_year is not None else pd.DataFrame()
 
 if not year_records or not year_freq:
     st.info("この年に表示できるデータがありません。")
@@ -485,11 +492,24 @@ render_signal_cards(
     graph.number_of_nodes(),
 )
 
+network_note = f"{base_year}との変化は上のカードに表示" if base_year is not None else "表示年のことばマップ"
 st.markdown(
-    '<div class="scope-panel-title"><h3>ことばの近さ</h3><span>近くで語られた言葉ほど、近くに集まります</span></div>',
+    f'<div class="scope-panel-title"><h3>{target_year}のことばの近さ</h3><span>{network_note}</span></div>',
     unsafe_allow_html=True,
 )
 render_network(graph, min_edge_weight=5, height=560, physics=False, edge_opacity=0.24)
+
+if base_year is not None:
+    with st.expander(f"{base_year}のことばの近さも見る", expanded=False):
+        base_network_records = [record for record in filtered_records if record.get("year") == base_year]
+        base_network_freq, _ = aggregate_terms(base_network_records)
+        base_graph = build_network(
+            base_network_records,
+            base_network_freq,
+            top_k_per_record=18,
+            max_nodes=55,
+        )
+        render_network(base_graph, min_edge_weight=5, height=460, physics=False, edge_opacity=0.2)
 
 visual_left, visual_right = st.columns([.95, 1.05], gap="large")
 
@@ -524,25 +544,18 @@ with st.expander("数字でも見る", expanded=False):
             st.markdown(f"##### {base_year}から減ったことば")
             st.dataframe(down, use_container_width=True, hide_index=True)
 
-with st.expander("スコープを調整する", expanded=False):
-    c1, c2, c3, c4 = st.columns(4)
+with st.expander("ネットワークを調整する", expanded=False):
+    c1, c2, c3 = st.columns(3)
     with c1:
-        top_n = st.slider("ことば雲", 10, 80, 35, 5)
-    with c2:
         top_k_per_record = st.slider("各発言の語数", 8, 80, 18, 2)
-    with c3:
+    with c2:
         max_nodes = st.slider("語の数", 20, 160, 50, 10)
-    with c4:
+    with c3:
         min_edge_weight = st.slider("つながり", 1, 40, 6, 1)
 
-    scoped_terms = pd.DataFrame(freq.most_common(top_n), columns=["ことば", "出現数"])
-    render_word_cloud(freq, top_n)
-    render_term_bar_chart(scoped_terms)
-    st.dataframe(scoped_terms, use_container_width=True, hide_index=True)
-
     scoped_graph = build_network(
-        filtered_records,
-        freq,
+        year_records,
+        year_freq,
         top_k_per_record=top_k_per_record,
         max_nodes=max_nodes,
     )
