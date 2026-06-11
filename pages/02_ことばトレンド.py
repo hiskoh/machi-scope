@@ -122,28 +122,80 @@ def compare_year_terms(records: list[dict[str, Any]], target_year: Any, base_yea
     return pd.DataFrame(rows)
 
 
+def find_year_value(years: list[Any], preferred: int | str) -> Any | None:
+    preferred_text = str(preferred)
+    for year in years:
+        year_text = str(year).replace("年", "")
+        if year_text == preferred_text:
+            return year
+    return None
+
+
+def default_target_year(years: list[Any]) -> Any:
+    return find_year_value(years, 2025) or (years[-1] if years else None)
+
+
+def default_base_year(years: list[Any], target_year: Any) -> Any:
+    candidate = find_year_value(years, 2024)
+    if candidate is not None and candidate != target_year:
+        return candidate
+
+    previous_candidates = [year for year in years if str(year) < str(target_year)]
+    if previous_candidates:
+        return previous_candidates[-1]
+    for year in years:
+        if year != target_year:
+            return year
+    return target_year
+
+
 def render_rising_cards(rows: pd.DataFrame, target_year: Any, base_year: Any) -> None:
     if rows.empty:
         st.info("前年差で目立つことばは見つかりませんでした。")
         return
 
-    cards = []
+    columns = st.columns(3)
     for index, row in enumerate(rows.head(3).to_dict("records"), start=1):
         term = row["ことば"]
         current = row[str(target_year)]
         previous = row[str(base_year)]
         diff = row["前年差"]
         ratio = row["前年比"]
-        cards.append(
-            f"""
-            <section class="scope-rank-card">
-                <div class="rank">注目 {index}</div>
-                <strong>{escape(str(term))}</strong>
-                <span>{base_year} {int(previous):,} → {target_year} {int(current):,}<br>+{int(diff):,} / {ratio}</span>
-            </section>
-            """
+        with columns[index - 1]:
+            card_html = (
+                '<section class="scope-rank-card">'
+                f'<div class="rank">注目 {index}</div>'
+                f"<strong>{escape(str(term))}</strong>"
+                f"<span>{base_year} {int(previous):,} → {target_year} {int(current):,}"
+                f"<br>+{int(diff):,} / {ratio}</span>"
+                "</section>"
+            )
+            st.markdown(
+                card_html,
+                unsafe_allow_html=True,
+            )
+
+
+def render_term_bar_chart(df_terms: pd.DataFrame) -> None:
+    if df_terms.empty:
+        return
+
+    try:
+        import altair as alt
+
+        chart = (
+            alt.Chart(df_terms)
+            .mark_bar(color="#1f7a68")
+            .encode(
+                x=alt.X("ことば:N", sort="-y", title=None),
+                y=alt.Y("出現数:Q", title="出現数"),
+                tooltip=["ことば", "出現数"],
+            )
+            .properties(height=300)
         )
-    st.markdown(f'<div class="scope-rank-grid">{"".join(cards)}</div>', unsafe_allow_html=True)
+        st.altair_chart(chart, use_container_width=True)
+    except Exception:
+        st.bar_chart(df_terms.set_index("ことば"))
 
 
 def build_network(records: list[dict[str, Any]], global_freq: Counter[str], top_k_per_record: int, max_nodes: int):
@@ -376,7 +428,8 @@ if not filtered_records or not freq:
 tab_visual, tab_network, tab_scope, tab_context = st.tabs(["見る", "近さを見る", "探求する", "見方"])
 
 with tab_visual:
-    default_year_index = max(0, len(filtered_years) - 2) if len(filtered_years) >= 2 else 0
+    preferred_target_year = default_target_year(filtered_years)
+    default_year_index = filtered_years.index(preferred_target_year) if preferred_target_year in filtered_years else 0
     target_year = st.selectbox("見る年", filtered_years, index=default_year_index)
     year_records = [record for record in filtered_records if record.get("year") == target_year]
     year_freq, year_utterances = aggregate_terms(year_records)
@@ -384,12 +437,11 @@ with tab_visual:
     if not year_records or not year_freq:
         st.info("この年に表示できるデータがありません。")
     else:
-        previous_candidates = [year for year in filtered_years if str(year) < str(target_year)]
-        default_base_year = previous_candidates[-1] if previous_candidates else (filtered_years[0] if filtered_years else target_year)
+        preferred_base_year = default_base_year(filtered_years, target_year)
         comparison = pd.DataFrame()
         if len(filtered_years) >= 2:
             base_year_options = [year for year in filtered_years if year != target_year]
-            base_index = base_year_options.index(default_base_year) if default_base_year in base_year_options else 0
+            base_index = base_year_options.index(preferred_base_year) if preferred_base_year in base_year_options else 0
             base_year = st.selectbox("比べる年", base_year_options, index=base_index)
             comparison = compare_year_terms(filtered_records, target_year, base_year)
 
@@ -421,7 +473,7 @@ with tab_visual:
             c2.metric("発言数", f"{year_utterances:,}")
             c3.metric("語彙数", f"{len(year_freq):,}")
             df_year_terms = pd.DataFrame(year_freq.most_common(20), columns=["ことば", "出現数"])
-            st.bar_chart(df_year_terms.set_index("ことば"))
+            render_term_bar_chart(df_year_terms)
             st.dataframe(df_year_terms, use_container_width=True, hide_index=True)
             if not comparison.empty:
                 up = comparison[comparison["前年差"] > 0].sort_values("前年差", ascending=False).head(15)
@@ -462,7 +514,7 @@ with tab_scope:
     top_terms = freq.most_common(top_n)
     df_terms = pd.DataFrame(top_terms, columns=["ことば", "出現数"])
     render_word_cloud(freq, top_n)
-    st.bar_chart(df_terms.set_index("ことば"))
+    render_term_bar_chart(df_terms)
     st.dataframe(df_terms, use_container_width=True, hide_index=True)
 
     graph = build_network(
