@@ -218,14 +218,6 @@ def record_terms(record: dict[str, Any]) -> Counter[str]:
     return terms
 
 
-def original_url(record: dict[str, Any]) -> str:
-    for key in ("url", "source_url", "original_url", "議事録URL", "link"):
-        value = record.get(key)
-        if isinstance(value, str) and value.startswith(("http://", "https://")):
-            return value
-    return "https://www.city.yamaguchi.yamaguchi.dbsr.jp/index.php/"
-
-
 def group_key(record: dict[str, Any]) -> tuple[Any, ...]:
     pair_id = record.get("pair_id")
     if pair_id not in (None, ""):
@@ -386,18 +378,21 @@ def render_qa_rows(pair: dict[str, Any], fallback_records: list[dict[str, Any]])
 
     for record in fallback_records:
         label = f"発言: {record.get('speaker_role', '')} {record.get('speaker', '')}".strip()
-        body = record.get("text") or record.get("content") or record.get("chunk_text") or record.get("body") or "原文チャンクを取得できませんでした。出典から確認してください。"
+        body = record.get("text") or record.get("content") or record.get("chunk_text") or record.get("body")
+        if not body:
+            continue
         with st.expander(label, expanded=False):
             st.write(body)
 
 
-def render_term_details(term: str, groups: list[dict[str, Any]], target_year: Any) -> None:
+def render_term_details(term: str, groups: list[dict[str, Any]], target_year: Any, *, show_title: bool = True) -> None:
     hits = groups_for_term(groups, term, limit=5)
-    st.markdown(
-        f'<div class="scope-panel-title"><h3>「{escape(term)}」の関連質疑・発言</h3>'
-        f"<span>{year_label(target_year)}の発言から</span></div>",
-        unsafe_allow_html=True,
-    )
+    if show_title:
+        st.markdown(
+            f'<div class="scope-panel-title"><h3>「{escape(term)}」の関連質疑・発言</h3>'
+            f"<span>{year_label(target_year)}の発言から</span></div>",
+            unsafe_allow_html=True,
+        )
     if not hits:
         st.info("この条件では発言要旨を表示できませんでした。スコープを広げると見つかるかもしれません。")
         return
@@ -408,7 +403,6 @@ def render_term_details(term: str, groups: list[dict[str, Any]], target_year: An
         label = record_label(record)
         count = int(group.get("term_count", 0))
         source_file = record.get("source_file") or ""
-        source_url = original_url(record)
         st.markdown(
             f"""
             <section class="scope-detail-card">
@@ -420,14 +414,15 @@ def render_term_details(term: str, groups: list[dict[str, Any]], target_year: An
             unsafe_allow_html=True,
         )
         render_qa_rows(pair or {}, group.get("records", []))
-        st.link_button("原文を確認する", source_url, use_container_width=True)
         if source_file:
             st.caption(f"出典: {source_file}")
 
 
-def select_term_button(term: str, key: str) -> None:
+def select_term_button(term: str, key: str) -> bool:
     if st.button(f"「{term}」を見る", key=key, use_container_width=True):
-        st.session_state["selected_rising_term"] = str(term)
+        current = st.session_state.get("selected_rank_term")
+        st.session_state["selected_rank_term"] = "" if current == str(term) else str(term)
+    return st.session_state.get("selected_rank_term") == str(term)
 
 
 def top_term_card_html(term: str, count: int, index: int, width: int) -> str:
@@ -470,7 +465,7 @@ def rising_card_html(row: dict[str, Any], index: int, target_year: Any, base_yea
     )
 
 
-def render_term_rank_list(counter: Counter[str], target_year: Any) -> None:
+def render_term_rank_list(counter: Counter[str], target_year: Any, groups: list[dict[str, Any]]) -> None:
     terms = counter.most_common(5)
     if not terms:
         st.info("表示できることばがありません。")
@@ -480,10 +475,11 @@ def render_term_rank_list(counter: Counter[str], target_year: Any) -> None:
     for index, (term, count) in enumerate(terms, start=1):
         width = max(12, min(100, round(count / max_count * 100)))
         st.markdown(top_term_card_html(str(term), int(count), index, width), unsafe_allow_html=True)
-        select_term_button(str(term), f"top-word-{target_year}-{index}-{term}")
+        if select_term_button(str(term), f"top-word-{target_year}-{index}-{term}"):
+            render_term_details(str(term), groups, target_year, show_title=False)
 
 
-def render_rising_rank_list(rising_rows: pd.DataFrame, target_year: Any, base_year: Any) -> None:
+def render_rising_rank_list(rising_rows: pd.DataFrame, target_year: Any, base_year: Any, groups: list[dict[str, Any]]) -> None:
     items = rising_rows.head(5).to_dict("records")
     if not items:
         st.info("比較できる年がありません。")
@@ -494,7 +490,8 @@ def render_rising_rank_list(rising_rows: pd.DataFrame, target_year: Any, base_ye
         term = str(row["ことば"])
         width = max(12, min(100, round(int(row["前年差"]) / max_diff * 100)))
         st.markdown(rising_card_html(row, index, target_year, base_year, width), unsafe_allow_html=True)
-        select_term_button(term, f"rising-word-{target_year}-{base_year}-{index}-{term}")
+        if select_term_button(term, f"rising-word-{target_year}-{base_year}-{index}-{term}"):
+            render_term_details(term, groups, target_year, show_title=False)
 
 
 def render_rank_sections(
@@ -502,14 +499,15 @@ def render_rank_sections(
     rising_rows: pd.DataFrame,
     target_year: Any,
     base_year: Any,
+    groups: list[dict[str, Any]],
 ) -> None:
     left_col, right_col = st.columns([1, 1], gap="large")
     with left_col:
         st.markdown("### 発言数 上位5件")
-        render_term_rank_list(counter, target_year)
+        render_term_rank_list(counter, target_year, groups)
     with right_col:
         st.markdown("### 変化率 上位5件")
-        render_rising_rank_list(rising_rows, target_year, base_year)
+        render_rising_rank_list(rising_rows, target_year, base_year, groups)
 
 def render_term_bar_chart(df_terms: pd.DataFrame) -> None:
     if df_terms.empty:
@@ -825,11 +823,7 @@ if not comparison.empty and base_year is not None:
 else:
     rising = pd.DataFrame()
 
-render_rank_sections(year_group_freq, rising, target_year, base_year)
-
-selected_rising_term = st.session_state.get("selected_rising_term")
-if selected_rising_term:
-    render_term_details(str(selected_rising_term), year_groups, target_year)
+render_rank_sections(year_group_freq, rising, target_year, base_year, year_groups)
 
 network_note = "言葉の分布を眺める"
 st.markdown(

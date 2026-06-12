@@ -388,7 +388,7 @@ def apply_base_styles() -> None:
             background: #fff;
             border-radius: 8px;
             padding: .95rem 1rem;
-            margin: .62rem 0;
+            margin: .62rem 0 .45rem;
             box-shadow: 0 6px 18px rgba(34, 48, 45, .045);
         }
         .scope-detail-card span {
