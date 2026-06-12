@@ -351,19 +351,22 @@ def load_pair_for_group(group: dict[str, Any]) -> dict[str, Any] | None:
     return None
 
 
-def render_qa_rows(pair: dict[str, Any], fallback_records: list[dict[str, Any]]) -> None:
+def render_qa_rows(pair: dict[str, Any], fallback_records: list[dict[str, Any]]) -> bool:
     questions = pair.get("Q", []) if pair else []
     answers = pair.get("A", []) if pair else []
+    rendered = False
     if questions or answers:
         for question in questions:
             label = f"質問: {question.get('speaker_role', '')} {question.get('speaker', '')}".strip()
             with st.expander(label, expanded=False):
                 st.write(question.get("text", ""))
+            rendered = True
         for answer in answers:
             label = f"答弁: {answer.get('speaker_role', '')} {answer.get('speaker', '')}".strip()
             with st.expander(label, expanded=False):
                 st.write(answer.get("text", ""))
-        return
+            rendered = True
+        return rendered
 
     for record in fallback_records:
         label = f"発言: {record.get('speaker_role', '')} {record.get('speaker', '')}".strip()
@@ -372,6 +375,8 @@ def render_qa_rows(pair: dict[str, Any], fallback_records: list[dict[str, Any]])
             continue
         with st.expander(label, expanded=False):
             st.write(body)
+        rendered = True
+    return rendered
 
 
 def render_term_details(term: str, groups: list[dict[str, Any]], target_year: Any, *, show_title: bool = True) -> None:
@@ -392,19 +397,14 @@ def render_term_details(term: str, groups: list[dict[str, Any]], target_year: An
         label = record_label(record)
         count = int(group.get("term_count", 0))
         source_file = record.get("source_file") or ""
-        st.markdown(
-            f"""
-            <section class="scope-detail-card">
-                <span>{index}. {escape(label)}</span>
-                <strong>{escape(term)} {count:,}回</strong>
-            </section>
-            """,
-            unsafe_allow_html=True,
-        )
-        render_qa_rows(pair or {}, group.get("records", []))
-        clean_source = source_label(source_file)
-        if clean_source:
-            st.caption(clean_source)
+        with st.container(border=True):
+            st.caption(f"{index}. {label}")
+            st.markdown(f"**{term} {count:,}回**")
+            if not render_qa_rows(pair or {}, group.get("records", [])):
+                st.caption("この項目は原文チャンクが未収録です。")
+            clean_source = source_label(source_file)
+            if clean_source:
+                st.caption(clean_source)
 
 
 def select_term_button(term: str, key: str) -> bool:

@@ -383,31 +383,6 @@ def apply_base_styles() -> None:
             font-size: .82rem;
             padding: .22rem .55rem;
         }
-        .scope-detail-card {
-            border: 1px solid rgba(47, 111, 159, .2);
-            background: #fff;
-            border-radius: 8px;
-            padding: .95rem 1rem;
-            margin: .62rem 0 .45rem;
-            box-shadow: 0 6px 18px rgba(34, 48, 45, .045);
-        }
-        .scope-detail-card span {
-            display: block;
-            color: var(--scope-muted);
-            font-size: .84rem;
-            margin-bottom: .2rem;
-        }
-        .scope-detail-card strong {
-            display: block;
-            color: #1f7a68;
-            font-size: 1rem;
-            margin-bottom: .35rem;
-        }
-        .scope-detail-card p {
-            color: var(--scope-ink);
-            line-height: 1.65;
-            margin: 0;
-        }
         .scope-signal-grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
