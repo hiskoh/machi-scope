@@ -154,6 +154,44 @@ def year_label(year: Any) -> str:
     return text if text.endswith("年") else f"{text}年"
 
 
+def selection_label(selected: list[Any], universe: list[Any], all_label: str) -> str:
+    if not selected or "すべて" in selected or len(selected) >= len(universe):
+        return all_label
+    items = [str(item) for item in selected]
+    if len(items) <= 2:
+        return "、".join(items)
+    return f"{'、'.join(items[:2])} ほか{len(items) - 2}"
+
+
+def render_stats_scope(
+    target_year: Any,
+    base_year: Any | None,
+    selected_roles: list[Any],
+    roles: list[Any],
+    selected_meetings: list[Any],
+    meetings: list[Any],
+    selected_speakers: list[Any],
+    speaker_options: list[Any],
+) -> None:
+    compare_text = f"比較: {year_label(base_year)}" if base_year is not None else "比較なし"
+    chips = [
+        selection_label(selected_roles, roles, "全立場"),
+        selection_label(selected_meetings, meetings, "全会議"),
+        selection_label(selected_speakers, speaker_options, "全発言者"),
+    ]
+    chip_html = "".join(f"<span>{escape(chip)}</span>" for chip in chips)
+    st.markdown(
+        f"""
+        <section class="scope-stat-scope">
+            <strong>{year_label(target_year)}の統計</strong>
+            <em>{escape(compare_text)}</em>
+            <div>{chip_html}</div>
+        </section>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def display_rate(value: Any) -> str:
     text = str(value)
     if text == "NEW":
@@ -642,6 +680,16 @@ if base_year is not None:
         render_network(base_graph, min_edge_weight=5, height=460, physics=False, edge_opacity=0.2)
 
 with st.expander("数字でも見る", expanded=False):
+    render_stats_scope(
+        target_year,
+        base_year,
+        selected_roles,
+        roles,
+        selected_meetings,
+        meetings,
+        selected_speakers,
+        speaker_options,
+    )
     c1, c2, c3 = st.columns(3)
     c1.metric("対象レコード", f"{len(year_records):,}")
     c2.metric("発言数", f"{year_utterances:,}")

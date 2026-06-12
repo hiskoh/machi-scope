@@ -335,6 +335,40 @@ def apply_base_styles() -> None:
             border-radius: 999px;
             background: linear-gradient(90deg, #2f6f9f, #5ba6a3);
         }
+        .scope-stat-scope {
+            border: 1px solid rgba(31, 122, 104, .14);
+            background: linear-gradient(180deg, rgba(247, 251, 249, .96), #fff);
+            border-radius: 8px;
+            padding: .9rem 1rem;
+            margin: .2rem 0 1rem;
+        }
+        .scope-stat-scope strong {
+            display: block;
+            color: var(--scope-ink);
+            font-size: 1.1rem;
+            line-height: 1.25;
+        }
+        .scope-stat-scope em {
+            display: block;
+            color: var(--scope-muted);
+            font-style: normal;
+            font-size: .84rem;
+            margin-top: .18rem;
+        }
+        .scope-stat-scope div {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .42rem;
+            margin-top: .68rem;
+        }
+        .scope-stat-scope span {
+            border: 1px solid rgba(31, 122, 104, .16);
+            background: #eef7f2;
+            color: #1f5f52;
+            border-radius: 999px;
+            font-size: .82rem;
+            padding: .22rem .55rem;
+        }
         .scope-detail-card {
             border: 1px solid rgba(47, 111, 159, .2);
             background: #fff;
