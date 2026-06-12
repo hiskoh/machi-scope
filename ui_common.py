@@ -271,6 +271,56 @@ def apply_base_styles() -> None:
             font-size: .82rem;
             font-weight: 700;
         }
+        .scope-word-rank-card {
+            border: 1px solid rgba(47, 111, 159, .14);
+            background: #fff;
+            border-radius: 8px;
+            padding: .78rem .82rem;
+            margin: .8rem 0 .32rem;
+            box-shadow: 0 8px 24px rgba(34, 48, 45, .045);
+        }
+        .scope-word-rank-head {
+            display: grid;
+            grid-template-columns: 2rem minmax(0, 1fr) auto;
+            gap: .58rem;
+            align-items: baseline;
+        }
+        .scope-word-rank-head span {
+            display: inline-grid;
+            place-items: center;
+            width: 1.55rem;
+            height: 1.55rem;
+            border-radius: 999px;
+            background: rgba(47, 111, 159, .1);
+            color: #2f6f9f;
+            font-weight: 800;
+            font-size: .85rem;
+        }
+        .scope-word-rank-head strong {
+            color: var(--scope-ink);
+            font-size: 1.2rem;
+            line-height: 1.25;
+            overflow-wrap: anywhere;
+        }
+        .scope-word-rank-head em {
+            color: #2f6f9f;
+            font-size: 1rem;
+            font-weight: 800;
+            font-style: normal;
+            white-space: nowrap;
+        }
+        .scope-word-rank-track {
+            height: .44rem;
+            border-radius: 999px;
+            background: #eef4f5;
+            overflow: hidden;
+            margin-top: .62rem;
+        }
+        .scope-word-rank-track div {
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #2f6f9f, #5ba6a3);
+        }
         .scope-detail-card {
             border: 1px solid rgba(47, 111, 159, .2);
             background: #fff;

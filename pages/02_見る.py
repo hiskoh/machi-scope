@@ -229,12 +229,44 @@ def render_term_details(term: str, records: list[dict[str, Any]], target_year: A
         )
 
 
+def select_term_button(term: str, key: str) -> None:
+    if st.button(f"「{term}」を見る", key=key, use_container_width=True):
+        st.session_state["selected_rising_term"] = str(term)
+
+
+def render_top_term_cards(counter: Counter[str], target_year: Any) -> None:
+    terms = counter.most_common(5)
+    if not terms:
+        st.info("表示できることばがありません。")
+        return
+
+    max_count = max(count for _, count in terms) or 1
+    for index, (term, count) in enumerate(terms, start=1):
+        width = max(12, min(100, round(count / max_count * 100)))
+        st.markdown(
+            f"""
+            <section class="scope-word-rank-card">
+                <div class="scope-word-rank-head">
+                    <span>{index}</span>
+                    <strong>{escape(str(term))}</strong>
+                    <em>{count:,}</em>
+                </div>
+                <div class="scope-word-rank-track">
+                    <div style="width:{width}%"></div>
+                </div>
+            </section>
+            """,
+            unsafe_allow_html=True,
+        )
+        select_term_button(str(term), f"top-word-{target_year}-{index}-{term}")
+
+
 def render_rising_cards(rows: pd.DataFrame, target_year: Any, base_year: Any) -> None:
     if rows.empty:
         st.info("前年差で目立つことばは見つかりませんでした。")
         return
 
-    for index, row in enumerate(rows.head(3).to_dict("records"), start=1):
+    for index, row in enumerate(rows.head(5).to_dict("records"), start=1):
         term = row["ことば"]
         current = row[str(target_year)]
         previous = row[str(base_year)]
@@ -251,8 +283,7 @@ def render_rising_cards(rows: pd.DataFrame, target_year: Any, base_year: Any) ->
             "</section>"
         )
         st.markdown(card_html, unsafe_allow_html=True)
-        if st.button(f"「{term}」を見る", key=f"rising-word-{target_year}-{base_year}-{index}-{term}", use_container_width=True):
-            st.session_state["selected_rising_term"] = str(term)
+        select_term_button(str(term), f"rising-word-{target_year}-{base_year}-{index}-{term}")
 
 
 def render_term_bar_chart(df_terms: pd.DataFrame) -> None:
@@ -554,34 +585,32 @@ graph = build_network(
     max_nodes=55,
 )
 
-render_signal_cards(
-    utterance_delta_text,
-    f"{base_year} → {target_year}" if base_year else "比較なし",
-    year_utterances,
-    base_utterances,
-    graph.number_of_edges(),
-    graph.number_of_nodes(),
-)
-
 visual_left, visual_right = st.columns([.95, 1.05], gap="large")
 
 with visual_left:
-    st.markdown(f"### {target_year}に伸びたことば")
+    st.markdown(f"### 発言数 上位5件")
+    render_top_term_cards(year_freq, target_year)
+
+with visual_right:
+    st.markdown(f"### 変化率 上位5件")
     if not comparison.empty:
-        rising = comparison[comparison["前年差"] > 0].sort_values("前年差", ascending=False)
+        rising = comparison[comparison["前年差"] > 0].copy()
+        rising["_rate_sort"] = rising.apply(
+            lambda row: 999999.0
+            if int(row[str(base_year)] or 0) == 0
+            else (int(row[str(target_year)] or 0) - int(row[str(base_year)] or 0)) / int(row[str(base_year)] or 1) * 100,
+            axis=1,
+        )
+        rising = rising.sort_values(["_rate_sort", "前年差"], ascending=False)
         render_rising_cards(rising, target_year, base_year)
     else:
         st.info("比較できる年がありません。")
-
-with visual_right:
-    st.markdown("### よく出ることば")
-    render_word_cloud(year_freq, 28)
 
 selected_rising_term = st.session_state.get("selected_rising_term")
 if selected_rising_term:
     render_term_details(str(selected_rising_term), year_records, target_year)
 
-network_note = f"{base_year}と比べた変化は上のカードに表示" if base_year is not None else "表示年のことばマップ"
+network_note = "言葉の分布を眺める"
 st.markdown(
     f'<div class="scope-panel-title"><h3>{target_year}のことばの近さ</h3><span>{network_note}</span></div>',
     unsafe_allow_html=True,
@@ -605,6 +634,9 @@ with st.expander("数字でも見る", expanded=False):
     c1.metric("対象レコード", f"{len(year_records):,}")
     c2.metric("発言数", f"{year_utterances:,}")
     c3.metric("語彙数", f"{len(year_freq):,}")
+    c4, c5 = st.columns(2)
+    c4.metric("発言量の変化", utterance_delta_text)
+    c5.metric("ことばのつながり", f"{graph.number_of_edges():,}")
     df_year_terms = pd.DataFrame(year_freq.most_common(20), columns=["ことば", "出現数"])
     render_term_bar_chart(df_year_terms)
     st.dataframe(df_year_terms, use_container_width=True, hide_index=True)
