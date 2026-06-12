@@ -154,6 +154,17 @@ def year_label(year: Any) -> str:
     return text if text.endswith("年") else f"{text}年"
 
 
+def display_rate(value: Any) -> str:
+    text = str(value)
+    if text == "NEW":
+        return "NEW"
+    if text.startswith("+"):
+        return f"+ {text[1:]}"
+    if text.startswith("-"):
+        return f"- {text[1:]}"
+    return text
+
+
 def count_term_in_record(record: dict[str, Any], term: str) -> int:
     for record_term, count in record.get("top_terms", []) or []:
         if str(record_term) == term:
@@ -229,17 +240,14 @@ def render_rising_cards(rows: pd.DataFrame, target_year: Any, base_year: Any) ->
         previous = row[str(base_year)]
         diff = row["前年差"]
         change_rate = row["増減率"]
-        badge = "NEW" if change_rate == "NEW" else str(change_rate)
+        badge = display_rate(change_rate)
+        count_text = "新しく登場" if previous == 0 else f"{int(previous):,} → {int(current):,}"
         card_html = (
             '<section class="scope-rise-card">'
-            '<div class="scope-rise-top">'
-            f'<span class="rank">注目 {index}</span>'
-            f'<span class="scope-rise-badge">{escape(badge)}</span>'
-            "</div>"
+            f'<div class="scope-rise-badge">{escape(badge)}</div>'
             f'<strong class="scope-rise-word">{escape(str(term))}</strong>'
-            f'<span class="scope-rise-meta">{base_year} {int(previous):,} → {target_year} {int(current):,}'
-            f" / +{int(diff):,}</span>"
-            '<span class="scope-rise-hint">発言要旨へ</span>'
+            f'<span class="scope-rise-meta">{escape(str(base_year))} → {escape(str(target_year))} / {count_text}</span>'
+            f'<span class="scope-rise-hint">+{int(diff):,}回</span>'
             "</section>"
         )
         st.markdown(card_html, unsafe_allow_html=True)
@@ -278,32 +286,19 @@ def render_signal_cards(
     node_count: int,
 ) -> None:
     delta = current_utterances - base_utterances
-    scale_base = max(current_utterances, base_utterances, 1)
-    delta_width = max(8, min(100, round(abs(delta) / scale_base * 100)))
-    delta_class = " is-down" if delta < 0 else ""
-    delta_label = "増" if delta >= 0 else "減"
+    delta_class = " is-down" if delta < 0 else " is-up"
+    delta_sign = "+" if delta > 0 else ""
     st.markdown(
         f"""
         <div class="scope-signal-grid">
-            <section class="scope-signal-card">
-                <span>発言量の変化</span>
-                <strong>{escape(utterance_delta_text)}</strong>
-                <div class="scope-delta-row">
-                    <div class="scope-delta-track">
-                        <div class="scope-delta-fill{delta_class}" style="width:{delta_width}%"></div>
-                    </div>
-                    <div class="scope-delta-label">{delta_label}</div>
-                </div>
-                <div class="scope-delta-years">
-                    <span>比較年 {base_utterances:,}</span>
-                    <span>表示年 {current_utterances:,}</span>
-                </div>
-                <em>{escape(year_label)}</em>
+            <section class="scope-signal-card{delta_class}">
+                <span>{escape(year_label)}</span>
+                <strong>{delta_sign}{delta:,}</strong>
+                <em>発言量</em>
             </section>
             <section class="scope-signal-card">
-                <span>ことばのつながり</span>
                 <strong>{edge_count:,}</strong>
-                <em>{node_count:,}語のネットワーク</em>
+                <em>つながり / {node_count:,}語</em>
             </section>
         </div>
         """,

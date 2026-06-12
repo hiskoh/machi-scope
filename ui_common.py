@@ -216,14 +216,12 @@ def apply_base_styles() -> None:
             font-size: .9rem;
         }
         .scope-rise-card {
-            border: 1.5px solid rgba(31, 122, 104, .52);
-            background:
-                radial-gradient(circle at 96% 8%, rgba(31, 122, 104, .12), transparent 34%),
-                linear-gradient(180deg, rgba(239, 248, 244, .92), #fff);
+            border: 1px solid rgba(31, 122, 104, .16);
+            background: #fff;
             border-radius: 8px;
-            padding: .95rem;
-            margin: .72rem 0 .35rem;
-            box-shadow: 0 8px 22px rgba(31, 122, 104, .08);
+            padding: .55rem;
+            margin: .8rem 0 .32rem;
+            box-shadow: 0 8px 24px rgba(34, 48, 45, .055);
         }
         .scope-rise-top {
             display: flex;
@@ -238,33 +236,39 @@ def apply_base_styles() -> None:
             font-weight: 800;
         }
         .scope-rise-badge {
-            border: 1px solid rgba(31, 122, 104, .35);
-            background: #1f7a68;
-            color: #fff;
-            border-radius: 999px;
-            font-size: .9rem;
+            display: block;
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid rgba(31, 122, 104, .18);
+            background: #c9f3d0;
+            color: #1b6d35;
+            border-radius: 7px;
+            font-size: clamp(1.7rem, 5vw, 2.35rem);
             font-weight: 800;
-            line-height: 1;
-            padding: .34rem .58rem;
-            white-space: nowrap;
+            line-height: 1.1;
+            text-align: center;
+            padding: .48rem .6rem .56rem;
+            margin-bottom: .65rem;
+            letter-spacing: 0;
         }
         .scope-rise-word {
             display: block;
             color: var(--scope-ink);
-            font-size: 1.45rem;
+            font-size: 1.22rem;
             line-height: 1.24;
-            margin: .16rem 0 .22rem;
+            margin: .08rem .25rem .12rem;
         }
         .scope-rise-meta {
             display: block;
             color: var(--scope-muted);
-            font-size: .9rem;
+            font-size: .82rem;
+            margin: 0 .25rem;
         }
         .scope-rise-hint {
             display: inline-block;
-            margin-top: .56rem;
+            margin: .34rem .25rem .05rem;
             color: var(--scope-green);
-            font-size: .86rem;
+            font-size: .82rem;
             font-weight: 700;
         }
         .scope-detail-card {
@@ -299,32 +303,38 @@ def apply_base_styles() -> None:
             margin: .9rem 0 1rem;
         }
         .scope-signal-card {
-            border: 1px solid rgba(31, 122, 104, .18);
-            background:
-                radial-gradient(circle at 92% 10%, rgba(47, 111, 159, .09), transparent 30%),
-                #fff;
+            border: 1px solid rgba(31, 122, 104, .14);
+            background: #fff;
             border-radius: 8px;
-            padding: 1rem;
-            box-shadow: 0 8px 24px rgba(34, 48, 45, .055);
+            padding: .9rem 1rem;
+            box-shadow: 0 6px 18px rgba(34, 48, 45, .045);
+        }
+        .scope-signal-card.is-up {
+            border-color: rgba(31, 122, 104, .22);
+            background: linear-gradient(180deg, rgba(236, 249, 241, .88), #fff);
+        }
+        .scope-signal-card.is-down {
+            border-color: rgba(157, 107, 34, .2);
+            background: linear-gradient(180deg, rgba(250, 244, 232, .9), #fff);
         }
         .scope-signal-card span {
             display: block;
             color: var(--scope-muted);
-            font-size: .85rem;
-            margin-bottom: .25rem;
+            font-size: .78rem;
+            margin-bottom: .15rem;
         }
         .scope-signal-card strong {
             display: block;
             color: var(--scope-ink);
-            font-size: 1.75rem;
-            line-height: 1.2;
+            font-size: clamp(1.55rem, 4vw, 2.15rem);
+            line-height: 1.05;
         }
         .scope-signal-card em {
             display: block;
             color: var(--scope-green);
-            font-size: .86rem;
+            font-size: .82rem;
             font-style: normal;
-            margin-top: .3rem;
+            margin-top: .2rem;
         }
         .scope-delta-row {
             display: flex;
