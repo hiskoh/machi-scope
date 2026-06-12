@@ -313,13 +313,6 @@ def source_label(source_file: str) -> str:
 def load_pair_for_group(group: dict[str, Any]) -> dict[str, Any] | None:
     first = group.get("first") or {}
     pair_id = first.get("pair_id")
-    if pair_id in (None, ""):
-        return None
-    try:
-        pair_id_int = int(float(pair_id))
-    except (TypeError, ValueError):
-        return None
-
     bases = []
     for base in (
         council_pairs.base_from_record(first),
@@ -331,6 +324,17 @@ def load_pair_for_group(group: dict[str, Any]) -> dict[str, Any] | None:
     try:
         s3 = get_s3_client()
         bucket = secret_get("AWS-KEY", "DATA_BUCKET_NAME")
+        pair_id_int = None
+        if pair_id not in (None, ""):
+            pair_id_int = int(float(pair_id))
+        elif first.get("chunk_id"):
+            for base in bases:
+                pair_id_int = council_pairs.pair_id_for_chunk(s3, bucket, base, str(first.get("chunk_id") or ""))
+                if pair_id_int is not None:
+                    break
+        if pair_id_int is None:
+            return None
+
         for base in bases:
             pairs = council_pairs.build_pairs(
                 [
@@ -380,7 +384,7 @@ def render_qa_rows(pair: dict[str, Any], fallback_records: list[dict[str, Any]])
 
 
 def render_term_details(term: str, groups: list[dict[str, Any]], target_year: Any, *, show_title: bool = True) -> None:
-    hits = groups_for_term(groups, term, limit=5)
+    hits = groups_for_term(groups, term, limit=30)
     if show_title:
         st.markdown(
             f'<div class="scope-panel-title"><h3>「{escape(term)}」の関連質疑・発言</h3>'
@@ -391,20 +395,34 @@ def render_term_details(term: str, groups: list[dict[str, Any]], target_year: An
         st.info("この条件では発言要旨を表示できませんでした。スコープを広げると見つかるかもしれません。")
         return
 
-    for index, group in enumerate(hits, start=1):
+    shown = 0
+    for group in hits:
         record = group["first"]
         pair = load_pair_for_group(group)
+        fallback_records = group.get("records", [])
+        has_fallback_body = any(
+            record.get("text") or record.get("content") or record.get("chunk_text") or record.get("body")
+            for record in fallback_records
+        )
+        if not pair and not has_fallback_body:
+            continue
+
+        shown += 1
         label = record_label(record)
         count = int(group.get("term_count", 0))
         source_file = record.get("source_file") or ""
         with st.container(border=True):
-            st.caption(f"{index}. {label}")
+            st.caption(f"{shown}. {label}")
             st.markdown(f"**{term} {count:,}回**")
-            if not render_qa_rows(pair or {}, group.get("records", [])):
-                st.caption("この項目は原文チャンクが未収録です。")
+            render_qa_rows(pair or {}, fallback_records)
             clean_source = source_label(source_file)
             if clean_source:
                 st.caption(clean_source)
+        if shown >= 5:
+            break
+
+    if shown == 0:
+        st.caption("この条件では、表示できる質問・答弁の原文が見つかりませんでした。")
 
 
 def select_term_button(term: str, key: str) -> bool:

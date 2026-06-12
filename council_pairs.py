@@ -73,6 +73,38 @@ def load_pair_rows(s3, bucket: str, base_name: str, pair_ids: list[int]) -> list
     return rows
 
 
+def load_source_rows(s3, bucket: str, base_name: str) -> list[dict[str, Any]]:
+    key = f"{OUTPUT_PREFIX}{base_name}.jsonl"
+    try:
+        body = s3.get_object(Bucket=bucket, Key=key)["Body"].read().decode("utf-8")
+    except Exception:
+        return []
+
+    rows = []
+    for line in body.splitlines():
+        try:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+    return rows
+
+
+def pair_id_for_chunk(s3, bucket: str, base_name: str, chunk_id: str) -> int | None:
+    if not chunk_id:
+        return None
+    for row in load_source_rows(s3, bucket, base_name):
+        if str(row.get("chunk_id") or "") != str(chunk_id):
+            continue
+        pair_id = row.get("pair_id")
+        if pair_id in (None, ""):
+            return None
+        try:
+            return int(float(pair_id))
+        except (TypeError, ValueError):
+            return None
+    return None
+
+
 def build_pairs(hits: list[dict[str, Any]], s3, bucket: str) -> list[dict[str, Any]]:
     wanted: dict[str, list[int]] = defaultdict(list)
     for hit in hits:
