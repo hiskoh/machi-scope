@@ -303,33 +303,11 @@ def record_label(record: dict[str, Any]) -> str:
     return f"{meeting} / {role} {speaker}"
 
 
-def record_excerpt(record: dict[str, Any], term: str) -> str:
-    for key in ("summary", "要旨", "text", "content", "chunk_text", "body"):
-        value = record.get(key)
-        if isinstance(value, str) and value.strip():
-            text = value.strip().replace("\n", " ")
-            return text[:280] + ("..." if len(text) > 280 else "")
-
-    related = [str(item[0]) for item in (record.get("top_terms", []) or [])[:6]]
-    related_text = "、".join(related) if related else term
-    return f"この発言群では「{term}」が目立ちます。近いことば: {related_text}"
-
-
-def group_excerpt(group: dict[str, Any], term: str) -> str:
-    texts = []
-    for record in group.get("records", []):
-        for key in ("summary", "要旨", "text", "content", "chunk_text", "body"):
-            value = record.get(key)
-            if isinstance(value, str) and value.strip():
-                texts.append(value.strip().replace("\n", " "))
-                break
-    if texts:
-        text = " ".join(texts)
-        return text[:340] + ("..." if len(text) > 340 else "")
-
-    related = [word for word, _ in group.get("top_terms", Counter()).most_common(6)]
-    related_text = "、".join(related) if related else term
-    return f"この質疑・発言群では「{term}」が目立ちます。近いことば: {related_text}"
+def source_label(source_file: str) -> str:
+    text = str(source_file or "").strip()
+    if text.endswith(".txt"):
+        text = text[:-4]
+    return text
 
 
 def load_pair_for_group(group: dict[str, Any]) -> dict[str, Any] | None:
@@ -337,29 +315,40 @@ def load_pair_for_group(group: dict[str, Any]) -> dict[str, Any] | None:
     pair_id = first.get("pair_id")
     if pair_id in (None, ""):
         return None
-
-    base = council_pairs.base_from_record(first)
-    if not base:
+    try:
+        pair_id_int = int(float(pair_id))
+    except (TypeError, ValueError):
         return None
+
+    bases = []
+    for base in (
+        council_pairs.base_from_record(first),
+        str(first.get("source_file") or "").replace(".txt", ""),
+    ):
+        if base and base not in bases:
+            bases.append(base)
 
     try:
         s3 = get_s3_client()
         bucket = secret_get("AWS-KEY", "DATA_BUCKET_NAME")
-        pairs = council_pairs.build_pairs(
-            [
-                {
-                    "pair_id": int(pair_id),
-                    "source_file": first.get("source_file") or "",
-                    "chunk_id": first.get("chunk_id") or "",
-                }
-            ],
-            s3,
-            bucket,
-        )
+        for base in bases:
+            pairs = council_pairs.build_pairs(
+                [
+                    {
+                        "pair_id": pair_id_int,
+                        "source_file": f"{base}.txt",
+                        "chunk_id": "",
+                    }
+                ],
+                s3,
+                bucket,
+            )
+            if pairs:
+                return pairs[0]
     except Exception:
         return None
 
-    return pairs[0] if pairs else None
+    return None
 
 
 def render_qa_rows(pair: dict[str, Any], fallback_records: list[dict[str, Any]]) -> None:
@@ -408,14 +397,14 @@ def render_term_details(term: str, groups: list[dict[str, Any]], target_year: An
             <section class="scope-detail-card">
                 <span>{index}. {escape(label)}</span>
                 <strong>{escape(term)} {count:,}回</strong>
-                <p>{escape(group_excerpt(group, term))}</p>
             </section>
             """,
             unsafe_allow_html=True,
         )
         render_qa_rows(pair or {}, group.get("records", []))
-        if source_file:
-            st.caption(f"出典: {source_file}")
+        clean_source = source_label(source_file)
+        if clean_source:
+            st.caption(clean_source)
 
 
 def select_term_button(term: str, key: str) -> bool:
