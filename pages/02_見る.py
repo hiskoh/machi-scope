@@ -222,6 +222,51 @@ def records_for_term(records: list[dict[str, Any]], term: str, limit: int = 5) -
     return sorted(hits, key=lambda item: int(item.get("_term_count", 0)), reverse=True)[:limit]
 
 
+def original_url(record: dict[str, Any]) -> str:
+    for key in ("url", "source_url", "original_url", "議事録URL", "link"):
+        value = record.get(key)
+        if isinstance(value, str) and value.startswith(("http://", "https://")):
+            return value
+    return "https://www.city.yamaguchi.yamaguchi.dbsr.jp/index.php/"
+
+
+def group_key(record: dict[str, Any]) -> tuple[Any, ...]:
+    pair_id = record.get("pair_id")
+    if pair_id not in (None, ""):
+        return ("pair", record.get("source_file") or "", pair_id)
+    return (
+        "block",
+        record.get("source_file") or "",
+        record.get("meeting_name") or record.get("meeting") or "",
+        record.get("speaker") or "",
+        record.get("chunk_id") or record.get("date") or "",
+    )
+
+
+def grouped_records_for_term(records: list[dict[str, Any]], term: str, limit: int = 5) -> list[dict[str, Any]]:
+    groups: dict[tuple[Any, ...], dict[str, Any]] = {}
+    for record in records:
+        count = count_term_in_record(record, term)
+        if count <= 0:
+            continue
+        key = group_key(record)
+        group = groups.setdefault(
+            key,
+            {
+                "records": [],
+                "term_count": 0,
+                "top_terms": Counter(),
+                "first": record,
+            },
+        )
+        group["records"].append(record)
+        group["term_count"] += count
+        for related_term, related_count in record.get("top_terms", []) or []:
+            group["top_terms"][str(related_term)] += int(related_count or 0)
+
+    return sorted(groups.values(), key=lambda item: int(item["term_count"]), reverse=True)[:limit]
+
+
 def record_label(record: dict[str, Any]) -> str:
     meeting = record.get("meeting_name") or record.get("meeting") or "会議"
     speaker = record.get("speaker") or "発言者不明"
@@ -241,8 +286,25 @@ def record_excerpt(record: dict[str, Any], term: str) -> str:
     return f"この発言群では「{term}」が目立ちます。近いことば: {related_text}"
 
 
+def group_excerpt(group: dict[str, Any], term: str) -> str:
+    texts = []
+    for record in group.get("records", []):
+        for key in ("summary", "要旨", "text", "content", "chunk_text", "body"):
+            value = record.get(key)
+            if isinstance(value, str) and value.strip():
+                texts.append(value.strip().replace("\n", " "))
+                break
+    if texts:
+        text = " ".join(texts)
+        return text[:340] + ("..." if len(text) > 340 else "")
+
+    related = [word for word, _ in group.get("top_terms", Counter()).most_common(6)]
+    related_text = "、".join(related) if related else term
+    return f"この質疑・発言群では「{term}」が目立ちます。近いことば: {related_text}"
+
+
 def render_term_details(term: str, records: list[dict[str, Any]], target_year: Any) -> None:
-    hits = records_for_term(records, term, limit=5)
+    hits = grouped_records_for_term(records, term, limit=5)
     st.markdown(
         f'<div class="scope-panel-title"><h3>「{escape(term)}」の発言要旨</h3>'
         f"<span>{year_label(target_year)}の発言から</span></div>",
@@ -252,19 +314,25 @@ def render_term_details(term: str, records: list[dict[str, Any]], target_year: A
         st.info("この条件では発言要旨を表示できませんでした。スコープを広げると見つかるかもしれません。")
         return
 
-    for index, record in enumerate(hits, start=1):
+    for index, group in enumerate(hits, start=1):
+        record = group["first"]
         label = record_label(record)
-        count = int(record.get("_term_count", 0))
+        count = int(group.get("term_count", 0))
+        source_file = record.get("source_file") or ""
+        source_url = original_url(record)
         st.markdown(
             f"""
             <section class="scope-detail-card">
                 <span>{index}. {escape(label)}</span>
                 <strong>{escape(term)} {count:,}回</strong>
-                <p>{escape(record_excerpt(record, term))}</p>
+                <p>{escape(group_excerpt(group, term))}</p>
             </section>
             """,
             unsafe_allow_html=True,
         )
+        st.link_button("原文を確認する", source_url, use_container_width=True)
+        if source_file:
+            st.caption(f"出典: {source_file}")
 
 
 def select_term_button(term: str, key: str) -> None:
@@ -297,6 +365,79 @@ def render_top_term_cards(counter: Counter[str], target_year: Any) -> None:
             unsafe_allow_html=True,
         )
         select_term_button(str(term), f"top-word-{target_year}-{index}-{term}")
+
+
+def top_term_card_html(term: str, count: int, index: int, width: int) -> str:
+    return f"""
+    <section class="scope-word-rank-card">
+        <div class="scope-word-rank-head">
+            <span>{index}</span>
+            <strong>{escape(str(term))}</strong>
+            <em>{count:,}</em>
+        </div>
+        <div class="scope-word-rank-track">
+            <div style="width:{width}%"></div>
+        </div>
+    </section>
+    """
+
+
+def rising_card_html(row: dict[str, Any], index: int, target_year: Any, base_year: Any, width: int) -> str:
+    term = row["ことば"]
+    current = row[str(target_year)]
+    previous = row[str(base_year)]
+    diff = row["前年差"]
+    badge = display_rate(row["増減率"])
+    count_text = "新しく登場" if previous == 0 else f"{int(previous):,} → {int(current):,}"
+    return (
+        '<section class="scope-rise-card">'
+        '<div class="scope-rise-head">'
+        f"<span>{index}</span>"
+        f"<strong>{escape(str(term))}</strong>"
+        f'<em class="scope-rise-badge">{escape(badge)}</em>'
+        "</div>"
+        '<div class="scope-rise-sub">'
+        f"<span>{escape(str(base_year))} → {escape(str(target_year))} / {count_text}</span>"
+        f"<b>+{int(diff):,}回</b>"
+        "</div>"
+        '<div class="scope-rise-track">'
+        f'<div style="width:{width}%"></div>'
+        "</div>"
+        "</section>"
+    )
+
+
+def render_rank_rows(
+    counter: Counter[str],
+    rising_rows: pd.DataFrame,
+    target_year: Any,
+    base_year: Any,
+) -> None:
+    st.markdown(
+        '<div class="scope-rank-headings"><h3>発言数 上位5件</h3><h3>変化率 上位5件</h3></div>',
+        unsafe_allow_html=True,
+    )
+
+    top_terms = counter.most_common(5)
+    max_count = max((count for _, count in top_terms), default=1) or 1
+    rising_items = rising_rows.head(5).to_dict("records")
+    max_diff = max((int(row["前年差"]) for row in rising_items), default=1) or 1
+
+    for index in range(5):
+        left_col, right_col = st.columns([1, 1], gap="large")
+        with left_col:
+            if index < len(top_terms):
+                term, count = top_terms[index]
+                width = max(12, min(100, round(count / max_count * 100)))
+                st.markdown(top_term_card_html(str(term), int(count), index + 1, width), unsafe_allow_html=True)
+                select_term_button(str(term), f"top-word-{target_year}-{index + 1}-{term}")
+        with right_col:
+            if index < len(rising_items):
+                row = rising_items[index]
+                term = str(row["ことば"])
+                width = max(12, min(100, round(int(row["前年差"]) / max_diff * 100)))
+                st.markdown(rising_card_html(row, index + 1, target_year, base_year, width), unsafe_allow_html=True)
+                select_term_button(term, f"rising-word-{target_year}-{base_year}-{index + 1}-{term}")
 
 
 def render_rising_cards(rows: pd.DataFrame, target_year: Any, base_year: Any) -> None:
@@ -635,26 +776,19 @@ graph = build_network(
     max_nodes=55,
 )
 
-visual_left, visual_right = st.columns([.95, 1.05], gap="large")
+if not comparison.empty and base_year is not None:
+    rising = comparison[comparison["前年差"] > 0].copy()
+    rising["_rate_sort"] = rising.apply(
+        lambda row: 999999.0
+        if int(row[str(base_year)] or 0) == 0
+        else (int(row[str(target_year)] or 0) - int(row[str(base_year)] or 0)) / int(row[str(base_year)] or 1) * 100,
+        axis=1,
+    )
+    rising = rising.sort_values(["_rate_sort", "前年差"], ascending=False)
+else:
+    rising = pd.DataFrame()
 
-with visual_left:
-    st.markdown(f"### 発言数 上位5件")
-    render_top_term_cards(year_freq, target_year)
-
-with visual_right:
-    st.markdown(f"### 変化率 上位5件")
-    if not comparison.empty:
-        rising = comparison[comparison["前年差"] > 0].copy()
-        rising["_rate_sort"] = rising.apply(
-            lambda row: 999999.0
-            if int(row[str(base_year)] or 0) == 0
-            else (int(row[str(target_year)] or 0) - int(row[str(base_year)] or 0)) / int(row[str(base_year)] or 1) * 100,
-            axis=1,
-        )
-        rising = rising.sort_values(["_rate_sort", "前年差"], ascending=False)
-        render_rising_cards(rising, target_year, base_year)
-    else:
-        st.info("比較できる年がありません。")
+render_rank_rows(year_freq, rising, target_year, base_year)
 
 selected_rising_term = st.session_state.get("selected_rising_term")
 if selected_rising_term:

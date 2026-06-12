@@ -215,12 +215,25 @@ def apply_base_styles() -> None:
             color: var(--scope-muted);
             font-size: .9rem;
         }
+        .scope-rank-headings {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 2rem;
+            margin: 1rem 0 .2rem;
+        }
+        .scope-rank-headings h3 {
+            margin: 0;
+            color: var(--scope-ink);
+            font-size: 1.45rem;
+            line-height: 1.25;
+        }
         .scope-rise-card {
             border: 1px solid rgba(31, 122, 104, .16);
             background: #fff;
             border-radius: 8px;
             padding: .78rem .82rem;
             margin: .8rem 0 .32rem;
+            min-height: 6.25rem;
             box-shadow: 0 8px 24px rgba(34, 48, 45, .055);
         }
         .scope-rise-head {
@@ -291,6 +304,7 @@ def apply_base_styles() -> None:
             border-radius: 8px;
             padding: .78rem .82rem;
             margin: .8rem 0 .32rem;
+            min-height: 6.25rem;
             box-shadow: 0 8px 24px rgba(34, 48, 45, .045);
         }
         .scope-word-rank-head {
@@ -538,6 +552,7 @@ def apply_base_styles() -> None:
             .scope-steps { grid-template-columns: 1fr; }
             .scope-focus { grid-template-columns: 1fr; }
             .scope-rank-grid { grid-template-columns: 1fr; }
+            .scope-rank-headings { grid-template-columns: 1fr; gap: .4rem; }
             .scope-signal-grid { grid-template-columns: 1fr; }
             .scope-panel-title { display: block; }
         }
