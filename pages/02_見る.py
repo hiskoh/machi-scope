@@ -370,6 +370,7 @@ def render_top_term_cards(counter: Counter[str], target_year: Any) -> None:
 def top_term_card_html(term: str, count: int, index: int, width: int) -> str:
     return f"""
     <section class="scope-word-rank-card">
+        <div class="scope-rank-kind">よく出る</div>
         <div class="scope-word-rank-head">
             <span>{index}</span>
             <strong>{escape(str(term))}</strong>
@@ -391,6 +392,7 @@ def rising_card_html(row: dict[str, Any], index: int, target_year: Any, base_yea
     count_text = "新しく登場" if previous == 0 else f"{int(previous):,} → {int(current):,}"
     return (
         '<section class="scope-rise-card">'
+        '<div class="scope-rank-kind">増えた</div>'
         '<div class="scope-rise-head">'
         f"<span>{index}</span>"
         f"<strong>{escape(str(term))}</strong>"

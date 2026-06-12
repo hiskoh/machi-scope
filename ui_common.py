@@ -227,6 +227,13 @@ def apply_base_styles() -> None:
             font-size: 1.45rem;
             line-height: 1.25;
         }
+        .scope-rank-kind {
+            display: inline-block;
+            margin-bottom: .45rem;
+            color: var(--scope-muted);
+            font-size: .78rem;
+            font-weight: 700;
+        }
         .scope-rise-card {
             border: 1px solid rgba(31, 122, 104, .16);
             background: #fff;
@@ -552,7 +559,7 @@ def apply_base_styles() -> None:
             .scope-steps { grid-template-columns: 1fr; }
             .scope-focus { grid-template-columns: 1fr; }
             .scope-rank-grid { grid-template-columns: 1fr; }
-            .scope-rank-headings { grid-template-columns: 1fr; gap: .4rem; }
+            .scope-rank-headings { display: none; }
             .scope-signal-grid { grid-template-columns: 1fr; }
             .scope-panel-title { display: block; }
         }
