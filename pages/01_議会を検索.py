@@ -415,4 +415,4 @@ if result:
                 st.info(council_result["summary"])
 
 st.divider()
-st.caption("AIの要約は正確性を保証するものではありません。重要な判断は必ず原典を確認してください。")
+st.caption("AI要約のため、重要な判断や引用では必ず公式情報を確認してください。")
