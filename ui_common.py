@@ -219,57 +219,71 @@ def apply_base_styles() -> None:
             border: 1px solid rgba(31, 122, 104, .16);
             background: #fff;
             border-radius: 8px;
-            padding: .55rem;
+            padding: .78rem .82rem;
             margin: .8rem 0 .32rem;
             box-shadow: 0 8px 24px rgba(34, 48, 45, .055);
         }
-        .scope-rise-top {
-            display: flex;
-            justify-content: space-between;
-            gap: .5rem;
-            align-items: center;
-            margin-bottom: .3rem;
+        .scope-rise-head {
+            display: grid;
+            grid-template-columns: 2rem minmax(0, 1fr) auto;
+            gap: .58rem;
+            align-items: baseline;
         }
-        .scope-rise-top .rank {
+        .scope-rise-head > span {
+            display: inline-grid;
+            place-items: center;
+            width: 1.55rem;
+            height: 1.55rem;
+            border-radius: 999px;
+            background: rgba(31, 122, 104, .1);
             color: var(--scope-green);
-            font-size: .82rem;
             font-weight: 800;
+            font-size: .85rem;
+        }
+        .scope-rise-head strong {
+            color: var(--scope-ink);
+            font-size: 1.2rem;
+            line-height: 1.25;
+            overflow-wrap: anywhere;
         }
         .scope-rise-badge {
-            display: block;
-            width: 100%;
-            box-sizing: border-box;
-            border: 1px solid rgba(31, 122, 104, .18);
+            border: 1px solid rgba(31, 122, 104, .2);
             background: #c9f3d0;
             color: #1b6d35;
-            border-radius: 7px;
-            font-size: clamp(1.7rem, 5vw, 2.35rem);
+            border-radius: 999px;
+            font-size: .92rem;
             font-weight: 800;
             line-height: 1.1;
             text-align: center;
-            padding: .48rem .6rem .56rem;
-            margin-bottom: .65rem;
+            padding: .26rem .52rem .3rem;
             letter-spacing: 0;
+            white-space: nowrap;
         }
-        .scope-rise-word {
-            display: block;
-            color: var(--scope-ink);
-            font-size: 1.22rem;
-            line-height: 1.24;
-            margin: .08rem .25rem .12rem;
-        }
-        .scope-rise-meta {
-            display: block;
+        .scope-rise-sub {
+            display: flex;
+            justify-content: space-between;
+            gap: .7rem;
+            align-items: baseline;
+            margin-top: .42rem;
             color: var(--scope-muted);
             font-size: .82rem;
-            margin: 0 .25rem;
         }
-        .scope-rise-hint {
-            display: inline-block;
-            margin: .34rem .25rem .05rem;
+        .scope-rise-sub b {
             color: var(--scope-green);
-            font-size: .82rem;
             font-weight: 700;
+            white-space: nowrap;
+        }
+        .scope-rise-track {
+            height: .44rem;
+            border-radius: 999px;
+            background: #edf5f0;
+            overflow: hidden;
+            margin-top: .62rem;
+        }
+        .scope-rise-track div {
+            height: 100%;
+            border-radius: 999px;
+            background: linear-gradient(90deg, #1f7a68, #72bf8a);
         }
         .scope-word-rank-card {
             border: 1px solid rgba(47, 111, 159, .14);

@@ -266,7 +266,10 @@ def render_rising_cards(rows: pd.DataFrame, target_year: Any, base_year: Any) ->
         st.info("前年差で目立つことばは見つかりませんでした。")
         return
 
-    for index, row in enumerate(rows.head(5).to_dict("records"), start=1):
+    top_rows = rows.head(5).to_dict("records")
+    max_diff = max((int(row["前年差"]) for row in top_rows), default=1) or 1
+
+    for index, row in enumerate(top_rows, start=1):
         term = row["ことば"]
         current = row[str(target_year)]
         previous = row[str(base_year)]
@@ -274,12 +277,21 @@ def render_rising_cards(rows: pd.DataFrame, target_year: Any, base_year: Any) ->
         change_rate = row["増減率"]
         badge = display_rate(change_rate)
         count_text = "新しく登場" if previous == 0 else f"{int(previous):,} → {int(current):,}"
+        width = max(12, min(100, round(int(diff) / max_diff * 100)))
         card_html = (
             '<section class="scope-rise-card">'
-            f'<div class="scope-rise-badge">{escape(badge)}</div>'
-            f'<strong class="scope-rise-word">{escape(str(term))}</strong>'
-            f'<span class="scope-rise-meta">{escape(str(base_year))} → {escape(str(target_year))} / {count_text}</span>'
-            f'<span class="scope-rise-hint">+{int(diff):,}回</span>'
+            '<div class="scope-rise-head">'
+            f"<span>{index}</span>"
+            f"<strong>{escape(str(term))}</strong>"
+            f'<em class="scope-rise-badge">{escape(badge)}</em>'
+            "</div>"
+            '<div class="scope-rise-sub">'
+            f"<span>{escape(str(base_year))} → {escape(str(target_year))} / {count_text}</span>"
+            f"<b>+{int(diff):,}回</b>"
+            "</div>"
+            '<div class="scope-rise-track">'
+            f'<div style="width:{width}%"></div>'
+            "</div>"
             "</section>"
         )
         st.markdown(card_html, unsafe_allow_html=True)
